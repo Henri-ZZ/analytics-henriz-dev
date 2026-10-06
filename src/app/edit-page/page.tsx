@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Boxes, CircleCheck, Database, MousePointerClick, Pencil } from "lucide-react";
-import { InstallationsTable } from "@/components/edit-page/installations-table";
-import { isEditPageDbConfigured, listInstallations, summarizeInstallations } from "@/lib/edit-page-db";
-import type { InstallationRow } from "@/lib/edit-page-types";
+import { InstallationsExplorer } from "@/components/edit-page/installations-explorer";
+import { getFilterOptions, getInstallationSummary, isEditPageDbConfigured, listInstallations } from "@/lib/edit-page-db";
+import type { EditPageSummary, FilterOptions, InstallationRow } from "@/lib/edit-page-types";
 import { cn, formatNumber } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Edit Page" };
 export const dynamic = "force-dynamic";
+
+const EMPTY_OPTIONS: FilterOptions = { browsers: [], systems: [], channels: [], licenses: [], versions: [] };
 
 export default async function EditPageAnalytics() {
   if (!isEditPageDbConfigured()) {
@@ -20,20 +22,30 @@ export default async function EditPageAnalytics() {
   }
 
   let installations: InstallationRow[] = [];
+  let options: FilterOptions = EMPTY_OPTIONS;
+  let summary: EditPageSummary | null = null;
   let loadError: string | null = null;
 
   try {
-    installations = await listInstallations();
+    const [rows, filterOptions, aggregate] = await Promise.all([
+      listInstallations(),
+      getFilterOptions(),
+      getInstallationSummary(),
+    ]);
+    installations = rows;
+    options = filterOptions;
+    summary = aggregate;
   } catch (cause) {
     loadError = cause instanceof Error ? cause.message : "未知错误";
     console.error("[edit-page] failed to load installations", cause);
   }
 
-  if (loadError) {
-    return <Notice tone="error" title="查询 Neon 失败" description={loadError} />;
+  if (loadError || !summary) {
+    return <Notice tone="error" title="查询 Neon 失败" description={loadError ?? "未知错误"} />;
   }
 
-  const summary = summarizeInstallations(installations);
+  const loadedCount = installations.length;
+  const truncated = summary.total > loadedCount;
 
   return (
     <div>
@@ -85,13 +97,20 @@ export default async function EditPageAnalytics() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
           <div>
             <h2 className="text-sm font-semibold">全部安装</h2>
-            <p className="mt-0.5 text-xs text-[var(--subtle)]">按最近活跃时间排序，点击任意一行展开每日使用子表格</p>
+            <p className="mt-0.5 text-xs text-[var(--subtle)]">按最近活跃倒序，支持搜索与筛选；点击任意一行展开每日使用子表格</p>
           </div>
           <span className="rounded-full border bg-white px-3 py-1 text-xs text-[var(--secondary)]">
-            {formatNumber(installations.length)} 个安装
+            {formatNumber(summary.total)} 个安装
           </span>
         </div>
-        <InstallationsTable data={installations} />
+
+        {truncated && (
+          <div className="border-b bg-amber-50/60 px-5 py-2.5 text-xs leading-5 text-amber-800">
+            数据量较大，仅加载了按最近活跃排序的前 {formatNumber(loadedCount)} 条（共 {formatNumber(summary.total)} 条）。请用搜索或筛选缩小范围。
+          </div>
+        )}
+
+        <InstallationsExplorer data={installations} options={options} />
       </section>
     </div>
   );

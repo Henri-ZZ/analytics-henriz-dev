@@ -8,7 +8,9 @@
 export type InstallationStatus = "active" | "idle" | "churned" | "uninstalled";
 
 export type InstallationRow = {
-  /** Installation.installationId (UUID)，业务主键 */
+  /** Installation.id，数据库自增数字主键 */
+  id: number;
+  /** Installation.installationId (UUID)，业务标识；不在主表展示，仅在展开面板里给出 */
   installationId: string;
   firstVersion: string;
   currentVersion: string;
@@ -25,13 +27,11 @@ export type InstallationRow = {
   lastSeenAt: string;
   /** ISO 8601 字符串；null 表示未观测到卸载 */
   uninstalledAt: string | null;
-  /** 近 7 天 text.edit 次数 */
-  edits7d: number;
-  /** 近 7 天有使用记录的天数 */
-  activeDays7d: number;
-  /** 近 7 天全部事件次数 */
-  events7d: number;
-  /** 由 uninstalledAt / lastSeenAt 推导 */
+  /** Installation.settings 原始 JSON */
+  settings: Record<string, unknown>;
+  /** Installation.optionalPermissions 原始 JSON */
+  optionalPermissions: Record<string, unknown>;
+  /** 由 uninstalledAt / lastSeenAt 与滚动窗口阈值推导 */
   status: InstallationStatus;
   /** 距最近一次使用过去的天数 */
   daysSinceLastSeen: number;
@@ -48,8 +48,20 @@ export type DailyUsageRow = {
   dashboardOpens: number;
   /** image.replace */
   imageReplaces: number;
-  /** 当日全部事件次数 */
-  events: number;
+  /** 当日全部事件次数（各事件计数之和） */
+  totalEvents: number;
+  /** 当日原始 events 计数，键为事件名 */
+  events: Record<string, number>;
+};
+
+/** 筛选下拉的候选项，全部从数据库去重查询得到 */
+export type FilterOptions = {
+  browsers: string[];
+  systems: string[];
+  /** distribution，分发渠道 */
+  channels: string[];
+  licenses: string[];
+  versions: string[];
 };
 
 export type EditPageSummary = {
@@ -58,7 +70,9 @@ export type EditPageSummary = {
   idle: number;
   churned: number;
   uninstalled: number;
+  /** 近 7 天全部安装的 text.edit 次数 */
   edits7d: number;
+  /** 近 7 天全部安装的全部事件次数 */
   events7d: number;
   /** 近 7 天有使用记录的安装数 */
   usedLast7d: number;
