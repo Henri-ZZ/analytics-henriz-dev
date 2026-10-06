@@ -127,7 +127,7 @@ function SortHeader<TData, TValue>({ column, label }: { column: Column<TData, TV
       aria-label={`${label}：${hint}`}
       className={cn(
         "inline-flex items-center gap-1 transition-colors hover:text-[var(--ink)]",
-        active && "text-emerald-600 hover:text-emerald-700",
+        active && "text-[var(--accent-ink)] hover:text-[var(--accent)]",
       )}
     >
       {label}
@@ -149,7 +149,7 @@ function SettingsPopover({ installation }: { installation: InstallationRow }) {
         <button
           type="button"
           onClick={(event) => event.stopPropagation()}
-          className="text-xs font-medium text-[var(--accent)] underline underline-offset-2 transition-colors hover:text-[var(--ink)]"
+          className="text-xs font-medium text-[var(--accent-ink)] underline underline-offset-2 transition-colors hover:text-[var(--ink)]"
         >
           查看
         </button>

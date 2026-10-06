@@ -128,7 +128,7 @@ export function DailyUsagePanel({ installation }: { installation: InstallationRo
                       type="button"
                       onClick={() => setActiveDay(day)}
                       title="查看该日原始 events JSON"
-                      className="font-medium tabular-nums text-[var(--accent)] underline underline-offset-2 transition-colors hover:text-[var(--ink)]"
+                      className="font-medium tabular-nums text-[var(--accent-ink)] underline underline-offset-2 transition-colors hover:text-[var(--ink)]"
                     >
                       {day.date}
                     </button>

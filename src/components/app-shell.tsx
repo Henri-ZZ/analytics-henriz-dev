@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Blocks,
   ChevronDown,
+  ChevronRight,
   LogOut,
   Menu,
   PanelLeftClose,
@@ -21,10 +22,17 @@ import { useState } from "react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   // 移动端抽屉
   const [open, setOpen] = useState(false);
   // 桌面端收起成图标窄栏
   const [collapsed, setCollapsed] = useState(false);
+  // 二级菜单展开状态：用户手动切换过就以其为准，否则跟随当前路由（在当前应用下即展开）
+  const [groupOverrides, setGroupOverrides] = useState<Record<string, boolean>>({});
+
+  const isGroupOpen = (slug: string) => groupOverrides[slug] ?? pathname.startsWith(slug);
+  const toggleGroup = (slug: string) =>
+    setGroupOverrides((prev) => ({ ...prev, [slug]: !(prev[slug] ?? pathname.startsWith(slug)) }));
 
   return (
     <div className="min-h-dvh bg-[var(--canvas)] text-[var(--ink)]">
@@ -79,33 +87,85 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               应用分析
             </p>
-            {analyticsApps.map((app) => (
-              <Link
-                key={app.slug}
-                href={app.slug}
-                onClick={() => setOpen(false)}
-                title={app.name}
-                className={cn(
-                  "flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-[var(--secondary)]",
-                  pathname.startsWith(app.slug) && "bg-white font-medium text-[var(--ink)] shadow-[0_1px_2px_rgb(15_23_42/.05)]",
-                  collapsed && "lg:justify-center lg:px-0",
-                )}
-              >
-                {app.logoSrc ? (
-                  <Image
-                    src={app.logoSrc}
-                    alt=""
-                    width={20}
-                    height={20}
-                    unoptimized
-                    className="size-5 shrink-0 rounded-[5px]"
-                  />
-                ) : (
-                  <app.icon size={17} className="shrink-0" />
-                )}
-                <span className={cn(collapsed && "lg:hidden")}>{app.name}</span>
-              </Link>
-            ))}
+            {analyticsApps.map((app) => {
+              const groupOpen = isGroupOpen(app.slug);
+              const appActive = pathname.startsWith(app.slug);
+              const hasChildren = Boolean(app.children?.length);
+
+              const inner = (
+                <>
+                  {app.logoSrc ? (
+                    <Image
+                      src={app.logoSrc}
+                      alt=""
+                      width={20}
+                      height={20}
+                      unoptimized
+                      className="size-5 shrink-0 rounded-[5px]"
+                    />
+                  ) : (
+                    <app.icon size={17} className="shrink-0" />
+                  )}
+                  <span className={cn("truncate", collapsed && "lg:hidden")}>{app.name}</span>
+                  {hasChildren && (
+                    <ChevronRight
+                      size={15}
+                      className={cn(
+                        "ml-auto shrink-0 transition-transform duration-200",
+                        groupOpen && "rotate-90",
+                        collapsed && "lg:hidden",
+                      )}
+                    />
+                  )}
+                </>
+              );
+
+              return (
+                <div key={app.slug} className="mt-2">
+                  <button
+                    type="button"
+                    title={app.name}
+                    aria-expanded={hasChildren ? groupOpen : undefined}
+                    onClick={() => {
+                      // 收起成窄栏时没有二级菜单可展开，直接进入该应用
+                      if (collapsed || !hasChildren) {
+                        setOpen(false);
+                        router.push(app.slug);
+                        return;
+                      }
+                      toggleGroup(app.slug);
+                    }}
+                    className={cn(
+                      "flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm text-[var(--secondary)] transition-colors hover:bg-white/60",
+                      appActive && "text-[var(--ink)]",
+                      collapsed && "lg:justify-center lg:px-0",
+                      collapsed && appActive && "lg:bg-white lg:shadow-[0_1px_2px_rgb(15_23_42/.05)]",
+                    )}
+                  >
+                    {inner}
+                  </button>
+
+                  {hasChildren && (
+                    <div className={cn("mt-1 space-y-1", !groupOpen && "hidden", collapsed && "lg:hidden")}>
+                      {app.children?.map((child) => (
+                        <Link
+                          key={child.slug}
+                          href={child.slug}
+                          onClick={() => setOpen(false)}
+                          className={cn(
+                            "flex h-9 items-center rounded-lg pl-11 pr-3 text-sm text-[var(--secondary)] transition-colors hover:bg-white/60",
+                            (pathname === child.slug || pathname.startsWith(`${child.slug}/`)) &&
+                              "bg-white font-medium text-[var(--ink)] shadow-[0_1px_2px_rgb(15_23_42/.05)]",
+                          )}
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </nav>
 
@@ -142,8 +202,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button className="flex items-center gap-2 rounded-full p-1.5 pr-2 text-left hover:bg-white">
-                  <Avatar.Root className="grid size-8 place-items-center rounded-full bg-[#dce8e0]">
-                    <Avatar.Fallback className="text-xs font-semibold text-[#315b47]">H</Avatar.Fallback>
+                  <Avatar.Root className="grid size-8 place-items-center rounded-full bg-[var(--accent-soft)]">
+                    <Avatar.Fallback className="text-xs font-semibold text-[var(--accent-ink)]">H</Avatar.Fallback>
                   </Avatar.Root>
                   <span className="hidden text-sm font-medium sm:block">Henri</span>
                   <ChevronDown size={14} className="text-[var(--subtle)]" />

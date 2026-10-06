@@ -54,6 +54,28 @@ export type DailyUsageRow = {
   events: Record<string, number>;
 };
 
+/** 事件分析：单个事件在时间范围内的逐日次数 */
+export type EventDailySeries = {
+  key: string;
+  /** 与 EventDailyResult.dates 一一对应 */
+  counts: number[];
+  total: number;
+};
+
+export type EventDailyResult = {
+  /** 覆盖天数（闭区间） */
+  days: number;
+  /** YYYY-MM-DD */
+  start: string;
+  /** YYYY-MM-DD */
+  end: string;
+  /** true = 统计每日去重安装数；false = 统计事件次数 */
+  unique: boolean;
+  /** 连续日期序列，缺数据的日子补 0 */
+  dates: string[];
+  series: EventDailySeries[];
+};
+
 /** 筛选下拉的候选项，全部从数据库去重查询得到 */
 export type FilterOptions = {
   browsers: string[];

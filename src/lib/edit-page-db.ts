@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import type {
   DailyUsageRow,
   EditPageSummary,
+  EventDailyResult,
   FilterOptions,
   InstallationRow,
   InstallationStatus,
@@ -203,4 +204,66 @@ export async function getInstallationDailyUsage(installationId: string, days = E
       AND ud."date" >= CURRENT_DATE - (${days}::int - 1)
     ORDER BY ud."date" DESC
   `) as unknown as DailyUsageRow[];
+}
+
+/**
+ * 事件分析：给定事件键与日期区间（闭区间），返回逐日数值。
+ * 用 generate_series 生成连续日期，缺数据的日子补 0，方便直接画折线图。
+ *
+ * unique = true 时按「去重安装数」统计（同一天同一安装只算 1 次），
+ * 否则统计事件计数之和。
+ */
+export async function getEventDailyCounts(
+  keys: string[],
+  start: string,
+  end: string,
+  unique = false,
+): Promise<EventDailyResult> {
+  const sql = db();
+  const rows = (await sql`
+    WITH days AS (
+      SELECT generate_series(${start}::date, ${end}::date, interval '1 day')::date AS day
+    ),
+    selected AS (
+      SELECT unnest(string_to_array(${keys.join(",")}, ',')) AS key
+    )
+    SELECT
+      to_char(d.day, 'YYYY-MM-DD') AS "date",
+      s.key AS "key",
+      COALESCE((
+        SELECT CASE
+          WHEN ${unique}::boolean THEN COUNT(DISTINCT ud."installationId")
+          ELSE SUM(CASE WHEN e.value ~ '^[0-9]+$' THEN e.value::bigint ELSE 0 END)
+        END
+        FROM "UsageDaily" ud, jsonb_each_text(ud."events") AS e(key, value)
+        WHERE ud."date" = d.day AND e.key = s.key
+      ), 0)::int AS "count"
+    FROM days d
+    CROSS JOIN selected s
+    ORDER BY d.day, s.key
+  `) as unknown as { date: string; key: string; count: number }[];
+
+  const dates: string[] = [];
+  const countsByKey = new Map<string, number[]>(keys.map((key) => [key, []]));
+  let cursor = "";
+
+  for (const row of rows) {
+    if (row.date !== cursor) {
+      cursor = row.date;
+      dates.push(row.date);
+    }
+    countsByKey.get(row.key)?.push(row.count);
+  }
+
+  return {
+    days: dates.length,
+    start,
+    end,
+    unique,
+    dates,
+    series: keys.map((key) => {
+      const counts = countsByKey.get(key) ?? [];
+      return { key, counts, total: counts.reduce((sum, value) => sum + value, 0) };
+    }),
+  };
 }
