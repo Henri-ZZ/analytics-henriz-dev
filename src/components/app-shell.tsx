@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { BarChart3, Blocks, ChevronDown, LogOut, Menu, Search } from "lucide-react";
+import { Blocks, ChevronDown, LogOut, Menu, Search } from "lucide-react";
 import * as Avatar from "@radix-ui/react-avatar";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { analyticsApps } from "@/lib/apps";
@@ -18,14 +19,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-[var(--canvas)] text-[var(--ink)]">
       <aside className={cn("fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-[var(--border)] bg-[var(--sidebar)] px-3 py-4 transition-transform lg:translate-x-0", open && "translate-x-0")}>
         <div className="flex h-11 items-center gap-3 px-3">
-          <span className="grid size-8 place-items-center rounded-xl bg-[var(--accent)] text-white shadow-sm"><BarChart3 size={17} strokeWidth={2.3} /></span>
+          <span className="grid size-8 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-white shadow-sm"><Image src="/logo.svg" alt="" width={20} height={20} unoptimized className="size-5" /></span>
           <div><div className="text-sm font-semibold tracking-tight">Henri Analytics</div><div className="text-[10px] font-medium uppercase tracking-[.16em] text-[var(--subtle)]">Workspace</div></div>
         </div>
         <nav className="mt-7 flex-1" aria-label="主导航">
           <p className="px-3 text-[11px] font-semibold uppercase tracking-[.14em] text-[var(--subtle)]">总览</p>
           <Link href="/" onClick={() => setOpen(false)} className={cn("mt-2 flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-[var(--secondary)]", pathname === "/" && "bg-white font-medium text-[var(--ink)] shadow-[0_1px_2px_rgb(15_23_42/.05)]")}><Blocks size={17} />应用</Link>
           <p className="mb-2 mt-7 px-3 text-[11px] font-semibold uppercase tracking-[.14em] text-[var(--subtle)]">应用分析</p>
-          {analyticsApps.map((app) => <Link key={app.slug} href={app.slug} onClick={() => setOpen(false)} className={cn("flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-[var(--secondary)]", pathname.startsWith(app.slug) && "bg-white font-medium text-[var(--ink)] shadow-[0_1px_2px_rgb(15_23_42/.05)]")}><app.icon size={17} />{app.name}<span className="ml-auto size-1.5 rounded-full bg-amber-400" /></Link>)}
+          {analyticsApps.map((app) => <Link key={app.slug} href={app.slug} onClick={() => setOpen(false)} className={cn("flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-[var(--secondary)]", pathname.startsWith(app.slug) && "bg-white font-medium text-[var(--ink)] shadow-[0_1px_2px_rgb(15_23_42/.05)]")}>{app.logoSrc ? <Image src={app.logoSrc} alt="" width={20} height={20} unoptimized className="size-5 shrink-0 rounded-[5px]" /> : <app.icon size={17} />}{app.name}</Link>)}
         </nav>
         <div className="rounded-xl border border-[var(--border)] bg-white/65 p-3 text-xs leading-5 text-[var(--secondary)]">分析应用会在这里逐步加入，数据与页面按应用隔离。</div>
       </aside>
