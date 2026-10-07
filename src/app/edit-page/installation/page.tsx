@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { Boxes, CircleCheck, Database, MousePointerClick, Pencil } from "lucide-react";
-import { InstallationsExplorer } from "@/components/edit-page/installations-explorer";
-import { getFilterOptions, getInstallationSummary, isEditPageDbConfigured, listInstallations } from "@/lib/edit-page-db";
-import type { EditPageSummary, FilterOptions, InstallationRow } from "@/lib/edit-page-types";
-import { cn, formatNumber } from "@/lib/utils";
+import { Database } from "lucide-react";
+import { InstallationExplorer } from "@/components/edit-page/installation-explorer";
+import { getFilterOptions, isEditPageDbConfigured } from "@/lib/edit-page-db";
+import type { FilterOptions } from "@/lib/edit-page-types";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "安装分析" };
 export const dynamic = "force-dynamic";
@@ -21,31 +21,20 @@ export default async function EditPageInstallationAnalytics() {
     );
   }
 
-  let installations: InstallationRow[] = [];
+  // 只预取筛选下拉的候选值（一条轻量 DISTINCT 查询），安装列表与汇总在点击「查询」后才拉
   let options: FilterOptions = EMPTY_OPTIONS;
-  let summary: EditPageSummary | null = null;
   let loadError: string | null = null;
 
   try {
-    const [rows, filterOptions, aggregate] = await Promise.all([
-      listInstallations(),
-      getFilterOptions(),
-      getInstallationSummary(),
-    ]);
-    installations = rows;
-    options = filterOptions;
-    summary = aggregate;
+    options = await getFilterOptions();
   } catch (cause) {
     loadError = cause instanceof Error ? cause.message : "未知错误";
-    console.error("[edit-page] failed to load installations", cause);
+    console.error("[edit-page] failed to load filter options", cause);
   }
 
-  if (loadError || !summary) {
-    return <Notice tone="error" title="查询 Neon 失败" description={loadError ?? "未知错误"} />;
+  if (loadError) {
+    return <Notice tone="error" title="查询 Neon 失败" description={loadError} />;
   }
-
-  const loadedCount = installations.length;
-  const truncated = summary.total > loadedCount;
 
   return (
     <div>
@@ -66,65 +55,7 @@ export default async function EditPageInstallationAnalytics() {
         </div>
       </div>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat
-          icon={<Boxes size={15} />}
-          label="安装总数"
-          value={formatNumber(summary.total)}
-          hint={`${summary.active} 活跃 · ${summary.idle} 沉默 · ${summary.churned} 流失 · ${summary.uninstalled} 已卸载`}
-        />
-        <Stat
-          icon={<CircleCheck size={15} />}
-          label="活跃安装"
-          value={formatNumber(summary.active)}
-          hint="近 7 天有上报记录"
-        />
-        <Stat
-          icon={<Pencil size={15} />}
-          label="近 7 日编辑"
-          value={formatNumber(summary.edits7d)}
-          hint={`全部事件 ${formatNumber(summary.events7d)} 次`}
-        />
-        <Stat
-          icon={<MousePointerClick size={15} />}
-          label="近 7 日有使用安装"
-          value={formatNumber(summary.usedLast7d)}
-          hint={summary.total > 0 ? `占比 ${Math.round((summary.usedLast7d / summary.total) * 100)}%` : "—"}
-        />
-      </section>
-
-      <section className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-[0_1px_2px_rgb(15_23_42/.025)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold">全部安装</h2>
-            <p className="mt-0.5 text-xs text-[var(--subtle)]">按最近活跃倒序，支持搜索与筛选；点击任意一行展开每日使用子表格</p>
-          </div>
-          <span className="rounded-full border bg-white px-3 py-1 text-xs text-[var(--secondary)]">
-            {formatNumber(summary.total)} 个安装
-          </span>
-        </div>
-
-        {truncated && (
-          <div className="border-b bg-amber-50/60 px-5 py-2.5 text-xs leading-5 text-amber-800">
-            数据量较大，仅加载了按最近活跃排序的前 {formatNumber(loadedCount)} 条（共 {formatNumber(summary.total)} 条）。请用搜索或筛选缩小范围。
-          </div>
-        )}
-
-        <InstallationsExplorer data={installations} options={options} />
-      </section>
-    </div>
-  );
-}
-
-function Stat({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint: string }) {
-  return (
-    <div className="rounded-xl border bg-white/65 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs text-[var(--subtle)]">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-1.5 text-xl font-semibold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-xs text-[var(--subtle)]">{hint}</div>
+      <InstallationExplorer initialOptions={options} />
     </div>
   );
 }

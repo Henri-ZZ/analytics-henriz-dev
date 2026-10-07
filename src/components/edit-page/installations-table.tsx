@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -11,25 +11,23 @@ import {
   useReactTable,
   type Column,
   type ExpandedState,
+  type OnChangeFn,
   type PaginationState,
   type SortingState,
 } from "@tanstack/react-table";
 import * as Popover from "@radix-ui/react-popover";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DailyUsagePanel } from "@/components/edit-page/daily-usage-panel";
 import { JsonView } from "@/components/edit-page/json-view";
 import { cn, formatNumber } from "@/lib/utils";
 import { browserLabel, licenseLabel, osLabel, STATUS_META } from "@/lib/edit-page-display";
-import type { FilterOptions, InstallationRow, InstallationStatus } from "@/lib/edit-page-types";
+import type { InstallationRow } from "@/lib/edit-page-types";
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-const DEFAULT_PAGE_SIZE = 10;
-
-const STATUS_OPTIONS: InstallationStatus[] = ["active", "idle", "churned", "uninstalled"];
+export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+export const DEFAULT_PAGE_SIZE = 10;
 
 function browserName(row: InstallationRow) {
   const version = row.browserMajorVersion ? ` ${row.browserMajorVersion}` : "";
@@ -61,7 +59,7 @@ function LicenseBadge({ licenseType }: { licenseType: string }) {
   );
 }
 
-function StatusPill({ status }: { status: InstallationStatus }) {
+function StatusPill({ status }: { status: InstallationRow["status"] }) {
   const meta = STATUS_META[status];
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", meta.text)}>
@@ -230,61 +228,34 @@ const columns = [
   }),
 ];
 
-export function InstallationsExplorer({ data, options }: { data: InstallationRow[]; options: FilterOptions }) {
-  const [search, setSearch] = useState("");
-  const [browser, setBrowser] = useState("");
-  const [os, setOs] = useState("");
-  const [channel, setChannel] = useState("");
-  const [license, setLicense] = useState("");
-  const [status, setStatus] = useState("");
-  const [version, setVersion] = useState("");
+/**
+ * 安装列表表格。数据由外层按筛选条件过滤后传入；
+ * 分页状态提升到外层，方便「筛选变化 / 重新查询」时回到第一页。
+ */
+export function InstallationsTable({
+  data,
+  hasFilters,
+  pagination,
+  onPaginationChange,
+}: {
+  data: InstallationRow[];
+  hasFilters: boolean;
+  pagination: PaginationState;
+  onPaginationChange: OnChangeFn<PaginationState>;
+}) {
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const backToFirstPage = () => setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-
-    return data.filter((row) => {
-      if (browser && row.browser !== browser) return false;
-      if (os && row.os !== os) return false;
-      if (channel && row.distribution !== channel) return false;
-      if (license && row.licenseType !== license) return false;
-      if (status && row.status !== status) return false;
-      if (version && row.currentVersion !== version) return false;
-      if (term) {
-        const hit = row.installationId.toLowerCase().includes(term) || String(row.id).includes(term);
-        if (!hit) return false;
-      }
-      return true;
-    });
-  }, [data, search, browser, os, channel, license, status, version]);
-
-  const hasFilters = Boolean(search || browser || os || channel || license || status || version);
-
-  const clearFilters = () => {
-    setSearch("");
-    setBrowser("");
-    setOs("");
-    setChannel("");
-    setLicense("");
-    setStatus("");
-    setVersion("");
-    backToFirstPage();
-  };
-
   const table = useReactTable({
-    data: filtered,
+    data,
     columns,
     state: { expanded, pagination, sorting },
     onExpandedChange: setExpanded,
-    onPaginationChange: setPagination,
+    onPaginationChange,
     // 排序变化后回到第一页；enableMultiSort 关闭保证同时只有一列参与排序
     onSortingChange: (updater) => {
       setSorting(updater);
-      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onPaginationChange((prev) => ({ ...prev, pageIndex: 0 }));
     },
     enableMultiSort: false,
     enableSortingRemoval: true,
@@ -300,131 +271,6 @@ export function InstallationsExplorer({ data, options }: { data: InstallationRow
 
   return (
     <div>
-      <div className="flex flex-col gap-3 border-b px-5 py-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-64">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--subtle)]" />
-            <Input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                backToFirstPage();
-              }}
-              placeholder="搜索 id 或 installationId"
-              aria-label="搜索安装"
-              className="pl-9"
-            />
-          </div>
-
-          <Select
-            value={browser}
-            aria-label="按浏览器筛选"
-            onChange={(event) => {
-              setBrowser(event.target.value);
-              backToFirstPage();
-            }}
-          >
-            <option value="">全部浏览器</option>
-            {options.browsers.map((value) => (
-              <option key={value} value={value}>
-                {browserLabel(value)}
-              </option>
-            ))}
-          </Select>
-
-          <Select
-            value={os}
-            aria-label="按操作系统筛选"
-            onChange={(event) => {
-              setOs(event.target.value);
-              backToFirstPage();
-            }}
-          >
-            <option value="">全部操作系统</option>
-            {options.systems.map((value) => (
-              <option key={value} value={value}>
-                {osLabel(value)}
-              </option>
-            ))}
-          </Select>
-
-          <Select
-            value={channel}
-            aria-label="按渠道筛选"
-            onChange={(event) => {
-              setChannel(event.target.value);
-              backToFirstPage();
-            }}
-          >
-            <option value="">全部渠道</option>
-            {options.channels.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </Select>
-
-          <Select
-            value={license}
-            aria-label="按授权筛选"
-            onChange={(event) => {
-              setLicense(event.target.value);
-              backToFirstPage();
-            }}
-          >
-            <option value="">全部授权</option>
-            {options.licenses.map((value) => (
-              <option key={value} value={value}>
-                {licenseLabel(value)}
-              </option>
-            ))}
-          </Select>
-
-          <Select
-            value={status}
-            aria-label="按状态筛选"
-            onChange={(event) => {
-              setStatus(event.target.value);
-              backToFirstPage();
-            }}
-          >
-            <option value="">全部状态</option>
-            {STATUS_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {STATUS_META[value].label}
-              </option>
-            ))}
-          </Select>
-
-          <Select
-            value={version}
-            aria-label="按版本筛选"
-            onChange={(event) => {
-              setVersion(event.target.value);
-              backToFirstPage();
-            }}
-          >
-            <option value="">全部版本</option>
-            {options.versions.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </Select>
-
-          {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <RotateCcw size={14} />
-              清除筛选
-            </Button>
-          )}
-        </div>
-
-        <div className="text-xs text-[var(--subtle)]">
-          筛选后 <span className="tabular-nums text-[var(--secondary)]">{formatNumber(filtered.length)}</span> 条
-        </div>
-      </div>
-
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -475,7 +321,7 @@ export function InstallationsExplorer({ data, options }: { data: InstallationRow
             value={String(pagination.pageSize)}
             aria-label="每页条数"
             className="h-8 pr-7 text-xs"
-            onChange={(event) => setPagination({ pageIndex: 0, pageSize: Number(event.target.value) })}
+            onChange={(event) => onPaginationChange({ pageIndex: 0, pageSize: Number(event.target.value) })}
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -483,7 +329,7 @@ export function InstallationsExplorer({ data, options }: { data: InstallationRow
               </option>
             ))}
           </Select>
-          <span className="tabular-nums">共 {formatNumber(filtered.length)} 条</span>
+          <span className="tabular-nums">共 {formatNumber(data.length)} 条</span>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-[var(--secondary)]">
