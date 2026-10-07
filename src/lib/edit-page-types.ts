@@ -10,6 +10,13 @@ export type InstallationStatus = "active" | "idle" | "churned" | "uninstalled";
 export type InstallationRow = {
   /** Installation.id，数据库自增数字主键 */
   id: number;
+  /**
+   * 稠密序号：按 Installation.id 升序排名，最老的安装是 1。
+   *
+   * 主键本身会跳号（删除、13 个月保留策略清理、回滚的事务都会消耗序列值），
+   * 所以展示用的编号在查询时用 ROW_NUMBER() 重新生成，任何时刻都是连续的。
+   */
+  seq: number;
   /** Installation.installationId (UUID)，业务标识；不在主表展示，仅在展开面板里给出 */
   installationId: string;
   firstVersion: string;

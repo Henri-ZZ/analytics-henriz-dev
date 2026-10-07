@@ -79,6 +79,9 @@ export async function listInstallations(limit = EDIT_PAGE_LIST_LIMIT): Promise<I
   const rows = (await sql`
     SELECT
       i."id",
+      -- 稠密序号：按 id 升序全局编号，最老的安装是 1。
+      -- 窗口函数在 ORDER BY / LIMIT 之前计算，所以即使列表被截断，序号仍是真实全局序号。
+      (ROW_NUMBER() OVER (ORDER BY i."id"))::int AS "seq",
       i."installationId"::text AS "installationId",
       i."firstVersion",
       i."currentVersion",
