@@ -300,7 +300,7 @@ export function InstallationExplorer({ initialOptions }: { initialOptions: Filte
               <div>
                 <h2 className="text-sm font-semibold">全部安装</h2>
                 <p className="mt-0.5 text-xs text-[var(--subtle)]">
-                  按最近活跃倒序，点击任意一行展开每日使用子表格
+                  默认按 id 倒序，点击表头可切换排序；点击任意一行展开每日使用子表格
                   {hasFilters && (
                     <>
                       {" · 筛选后 "}

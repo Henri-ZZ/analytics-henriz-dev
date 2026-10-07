@@ -212,8 +212,10 @@ const columns = [
     sortingFn: "basic",
     cell: ({ getValue }) => <span className="whitespace-nowrap text-xs text-[var(--secondary)]">{formatDate(getValue())}</span>,
   }),
-  columnHelper.accessor("daysSinceLastSeen", {
-    header: "最近活跃",
+  columnHelper.accessor("lastSeenAt", {
+    header: ({ column }) => <SortHeader column={column} label="最近上报" />,
+    // ISO 8601 字符串按字典序比较即等价于按时间比较
+    sortingFn: "basic",
     cell: ({ row }) => (
       <div className="whitespace-nowrap text-xs">
         <div className="text-[var(--secondary)]">{relativeDays(row.original.daysSinceLastSeen)}</div>
@@ -244,7 +246,8 @@ export function InstallationsTable({
   onPaginationChange: OnChangeFn<PaginationState>;
 }) {
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  const [sorting, setSorting] = useState<SortingState>([]);
+  // 默认按 id 降序（最新的安装排在前面）
+  const [sorting, setSorting] = useState<SortingState>([{ id: "id", desc: true }]);
 
   const table = useReactTable({
     data,
