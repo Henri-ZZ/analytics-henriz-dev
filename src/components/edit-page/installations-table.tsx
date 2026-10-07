@@ -207,7 +207,7 @@ const columns = [
     cell: ({ getValue }) => <span className="whitespace-nowrap text-xs text-[var(--secondary)]">{getValue()}</span>,
   }),
   columnHelper.accessor("firstSeenAt", {
-    header: ({ column }) => <SortHeader column={column} label="首次出现" />,
+    header: ({ column }) => <SortHeader column={column} label="首次上报" />,
     // ISO 8601 字符串按字典序比较即等价于按时间比较
     sortingFn: "basic",
     cell: ({ getValue }) => <span className="whitespace-nowrap text-xs text-[var(--secondary)]">{formatDate(getValue())}</span>,
