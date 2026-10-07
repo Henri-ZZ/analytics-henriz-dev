@@ -28,6 +28,7 @@ export const analyticsApps: AnalyticsApp[] = [
     children: [
       { name: "安装分析", slug: "/edit-page/installation" },
       { name: "事件分析", slug: "/edit-page/events" },
+      { name: "分布分析", slug: "/edit-page/distribution" },
     ],
   },
 ];

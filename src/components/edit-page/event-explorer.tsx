@@ -7,6 +7,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EventTrendChart } from "@/components/edit-page/event-trend-chart";
 import { EDIT_PAGE_COUNTER_KEY_TOTAL, EDIT_PAGE_EVENT_SECTIONS } from "@/lib/edit-page-events";
+import { CHART_COLORS } from "@/lib/edit-page-display";
 import type { EventDailyResult } from "@/lib/edit-page-types";
 import { cn } from "@/lib/utils";
 
@@ -14,22 +15,6 @@ const PRESET_DAYS = [7, 30, 90];
 const MAX_SELECTED = 12;
 const DEFAULT_SELECTED = ["dashboard.open", "edit.start", "text.edit"];
 const DAY_MS = 86_400_000;
-
-/** 曲线颜色：优先明快的红 / 黄 / 绿 / 蓝，再补其他鲜艳色 */
-const SERIES_COLORS = [
-  "#ef4444", // 红
-  "#eab308", // 黄
-  "#22c55e", // 绿
-  "#3b82f6", // 蓝
-  "#a855f7", // 紫
-  "#06b6d4", // 青
-  "#f97316", // 橙
-  "#ec4899", // 品红
-  "#84cc16", // 黄绿
-  "#8b5cf6", // 蓝紫
-  "#14b8a6", // 蓝绿
-  "#f43f5e", // 玫红
-];
 
 function countDays(start: string, end: string) {
   const startMs = Date.parse(`${start}T00:00:00Z`);
@@ -258,7 +243,7 @@ export function EventExplorer({ defaultStart, defaultEnd }: { defaultStart: stri
               dates={state.result.dates}
               series={state.result.series.map((item, index) => ({
                 ...item,
-                color: SERIES_COLORS[index % SERIES_COLORS.length],
+                color: CHART_COLORS[index % CHART_COLORS.length],
               }))}
               hiddenKeys={hiddenSeries}
               onToggleSeries={(key) =>

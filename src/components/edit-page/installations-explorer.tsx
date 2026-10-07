@@ -23,51 +23,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DailyUsagePanel } from "@/components/edit-page/daily-usage-panel";
 import { JsonView } from "@/components/edit-page/json-view";
 import { cn, formatNumber } from "@/lib/utils";
+import { browserLabel, licenseLabel, osLabel, STATUS_META } from "@/lib/edit-page-display";
 import type { FilterOptions, InstallationRow, InstallationStatus } from "@/lib/edit-page-types";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const DEFAULT_PAGE_SIZE = 10;
 
-const BROWSER_LABELS: Record<string, string> = {
-  chrome: "Chrome",
-  edge: "Edge",
-  brave: "Brave",
-  opera: "Opera",
-  vivaldi: "Vivaldi",
-  other_chromium: "Chromium",
-};
-
-const OS_LABELS: Record<string, string> = {
-  windows: "Windows",
-  mac: "macOS",
-  linux: "Linux",
-  chromeos: "ChromeOS",
-  android: "Android",
-  other: "Other",
-};
-
-const statusMeta: Record<InstallationStatus, { label: string; dot: string; text: string }> = {
-  active: { label: "活跃", dot: "bg-emerald-500", text: "text-emerald-700" },
-  idle: { label: "沉默", dot: "bg-amber-400", text: "text-amber-700" },
-  churned: { label: "流失", dot: "bg-rose-400", text: "text-rose-600" },
-  uninstalled: { label: "已卸载", dot: "bg-[#b6bdb9]", text: "text-[var(--subtle)]" },
-};
-
 const STATUS_OPTIONS: InstallationStatus[] = ["active", "idle", "churned", "uninstalled"];
-
-function browserLabel(value: string) {
-  return BROWSER_LABELS[value] ?? value;
-}
-
-function osLabel(value: string) {
-  return OS_LABELS[value] ?? value;
-}
-
-function licenseLabel(value: string) {
-  if (value === "premium") return "Premium";
-  if (value === "free") return "Free";
-  return value;
-}
 
 function browserName(row: InstallationRow) {
   const version = row.browserMajorVersion ? ` ${row.browserMajorVersion}` : "";
@@ -100,7 +62,7 @@ function LicenseBadge({ licenseType }: { licenseType: string }) {
 }
 
 function StatusPill({ status }: { status: InstallationStatus }) {
-  const meta = statusMeta[status];
+  const meta = STATUS_META[status];
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", meta.text)}>
       <span className={cn("size-1.5 rounded-full", meta.dot)} />
@@ -429,7 +391,7 @@ export function InstallationsExplorer({ data, options }: { data: InstallationRow
             <option value="">全部状态</option>
             {STATUS_OPTIONS.map((value) => (
               <option key={value} value={value}>
-                {statusMeta[value].label}
+                {STATUS_META[value].label}
               </option>
             ))}
           </Select>

@@ -2,6 +2,8 @@ import "server-only";
 import { neon } from "@neondatabase/serverless";
 import type {
   DailyUsageRow,
+  DistributionDimension,
+  DistributionResult,
   EditPageSummary,
   EventDailyResult,
   FilterOptions,
@@ -177,6 +179,80 @@ export async function getInstallationSummary(): Promise<EditPageSummary> {
   `) as unknown as [EditPageSummary];
 
   return row;
+}
+
+export const DISTRIBUTION_DIMENSIONS: DistributionDimension[] = [
+  "browser",
+  "os",
+  "distribution",
+  "licenseType",
+  "currentVersion",
+  "status",
+];
+
+export function isDistributionDimension(value: string): value is DistributionDimension {
+  return (DISTRIBUTION_DIMENSIONS as string[]).includes(value);
+}
+
+/**
+ * 分布分析：统计「所选时间范围内有使用记录」的安装，按指定维度分组。
+ *
+ * 口径说明：时间范围筛的是 UsageDaily 里有行（即当天有上报）的安装；
+ * 维度取值来自 Installation 上的属性，其中 status 的当前状态是相对「现在」推导的
+ * （所以区间越近，status 里「活跃」的占比越高，这是符合定义的）。
+ */
+export async function getInstallationDistribution(
+  dimension: DistributionDimension,
+  start: string,
+  end: string,
+): Promise<DistributionResult> {
+  const sql = db();
+  const { activeCutoff, churnCutoff } = statusCutoffs();
+
+  const rows = (await sql`
+    WITH scoped AS (
+      SELECT
+        i."browser",
+        i."os",
+        i."distribution",
+        i."licenseType",
+        i."currentVersion",
+        CASE
+          WHEN i."uninstalledAt" IS NOT NULL THEN 'uninstalled'
+          WHEN i."lastSeenAt" >= ${activeCutoff}::timestamptz THEN 'active'
+          WHEN i."lastSeenAt" >= ${churnCutoff}::timestamptz THEN 'idle'
+          ELSE 'churned'
+        END AS "status"
+      FROM "Installation" i
+      WHERE EXISTS (
+        SELECT 1 FROM "UsageDaily" ud
+        WHERE ud."installationId" = i."installationId"
+          AND ud."date" >= ${start}::date
+          AND ud."date" <= ${end}::date
+      )
+    )
+    SELECT
+      CASE ${dimension}::text
+        WHEN 'browser' THEN "browser"
+        WHEN 'os' THEN "os"
+        WHEN 'distribution' THEN "distribution"
+        WHEN 'licenseType' THEN "licenseType"
+        WHEN 'currentVersion' THEN "currentVersion"
+        ELSE "status"
+      END AS "value",
+      COUNT(*)::int AS "count"
+    FROM scoped
+    GROUP BY 1
+    ORDER BY 2 DESC, 1 ASC
+  `) as unknown as { value: string; count: number }[];
+
+  return {
+    dimension,
+    start,
+    end,
+    total: rows.reduce((sum, row) => sum + row.count, 0),
+    items: rows,
+  };
 }
 
 /** 单个安装近 N 天的每日使用明细 */

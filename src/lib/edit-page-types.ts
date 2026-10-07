@@ -76,6 +76,25 @@ export type EventDailyResult = {
   series: EventDailySeries[];
 };
 
+/** 分布分析支持的分组维度 */
+export type DistributionDimension = "browser" | "os" | "distribution" | "licenseType" | "currentVersion" | "status";
+
+export type DistributionItem = {
+  /** 该维度下的原始值，例如 chrome / mac / cws / premium / 2.2.2 / active */
+  value: string;
+  count: number;
+};
+
+export type DistributionResult = {
+  dimension: DistributionDimension;
+  start: string;
+  end: string;
+  /** 参与统计的安装总数 */
+  total: number;
+  /** 按数量倒序 */
+  items: DistributionItem[];
+};
+
 /** 筛选下拉的候选项，全部从数据库去重查询得到 */
 export type FilterOptions = {
   browsers: string[];
