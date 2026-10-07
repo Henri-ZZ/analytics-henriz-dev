@@ -78,8 +78,8 @@ export function InstallationExplorer({ initialOptions }: { initialOptions: Filte
       if (status && row.status !== status) return false;
       if (version && row.currentVersion !== version) return false;
       if (term) {
-        const hit = row.installationId.toLowerCase().includes(term) || String(row.id).includes(term);
-        if (!hit) return false;
+        // 只按 installationId 搜；数据库主键不在界面上展示，搜它会让结果对不上号
+        if (!row.installationId.toLowerCase().includes(term)) return false;
       }
       return true;
     });
@@ -120,7 +120,7 @@ export function InstallationExplorer({ initialOptions }: { initialOptions: Filte
                   setSearch(event.target.value);
                   backToFirstPage();
                 }}
-                placeholder="搜索 id 或 installationId"
+                placeholder="搜索 installationId"
                 aria-label="搜索安装"
                 className="pl-9"
               />
@@ -300,7 +300,7 @@ export function InstallationExplorer({ initialOptions }: { initialOptions: Filte
               <div>
                 <h2 className="text-sm font-semibold">全部安装</h2>
                 <p className="mt-0.5 text-xs text-[var(--subtle)]">
-                  默认按 id 倒序，点击表头可切换排序；点击任意一行展开每日使用子表格
+                  默认按首次上报倒序（最新安装在前），点击表头可切换排序；点击任意一行展开每日使用子表格
                   {hasFilters && (
                     <>
                       {" · 筛选后 "}

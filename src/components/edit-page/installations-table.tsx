@@ -13,7 +13,10 @@ import {
   type ExpandedState,
   type OnChangeFn,
   type PaginationState,
+  type Row,
   type SortingState,
+  // 与下方 UI 组件 Table 重名，这里改别名
+  type Table as DataTable,
 } from "@tanstack/react-table";
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
@@ -43,6 +46,17 @@ function relativeDays(days: number) {
   if (days <= 0) return "今天";
   if (days === 1) return "昨天";
   return `${days} 天前`;
+}
+
+/**
+ * 当前行在「排序 + 筛选」后的全局序号，跨页连续（第 2 页第 1 行是 11）。
+ *
+ * 不能用 row.index：排序行模型只对原行做浅拷贝，index 仍是原始 data 数组的下标，
+ * 排序后不会重排。所以按当前页的行序反推，pageSize 上限 100，开销可忽略。
+ */
+function rowOrdinal<TData>(row: Row<TData>, table: DataTable<TData>) {
+  const { pageIndex, pageSize } = table.getState().pagination;
+  return pageIndex * pageSize + table.getRowModel().rows.indexOf(row) + 1;
 }
 
 function LicenseBadge({ licenseType }: { licenseType: string }) {
@@ -158,10 +172,15 @@ const columns = [
       </button>
     ),
   }),
-  columnHelper.accessor("id", {
-    header: ({ column }) => <SortHeader column={column} label="id" />,
-    sortingFn: "basic",
-    cell: ({ getValue }) => <span className="tabular-nums text-xs text-[var(--secondary)]">{getValue()}</span>,
+  columnHelper.display({
+    id: "order",
+    header: () => "序号",
+    // 展示的是「在当前排序结果里排第几条」，不是数据库自增主键：
+    // 主键会跳号（删除、保留策略清理、失败回滚的事务都会消耗序列值），
+    // 看不出"第几条"，也看不出"一共多少条"。序号由 rowOrdinal 从当前页行序推出来。
+    cell: ({ row, table }) => (
+      <span className="tabular-nums text-xs text-[var(--subtle)]">{formatNumber(rowOrdinal(row, table))}</span>
+    ),
   }),
   columnHelper.accessor("licenseType", {
     header: "授权",
@@ -246,8 +265,9 @@ export function InstallationsTable({
   onPaginationChange: OnChangeFn<PaginationState>;
 }) {
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  // 默认按 id 降序（最新的安装排在前面）
-  const [sorting, setSorting] = useState<SortingState>([{ id: "id", desc: true }]);
+  // 默认最新的安装排在前面。原来按主键 id 降序，现在第一列改成了序号，
+  // 所以改用语义等价、且表头可见可点的「首次上报」降序（同一时刻入库的 id 与首次上报同序）。
+  const [sorting, setSorting] = useState<SortingState>([{ id: "firstSeenAt", desc: true }]);
 
   const table = useReactTable({
     data,
