@@ -121,8 +121,7 @@ export function dimensionValueLabel(dimension: DistributionDimension, value: str
       return browserLabel(value);
     case "os":
       return osLabel(value);
-    case "locale":
-      return localeLabel(value);
+    // 浏览器语言刻意不翻译：图表上用原始代码更紧凑，中文名放进 tooltip（见下方 dimensionTooltipLabel）
     case "licenseType":
       return licenseLabel(value);
     case "status":
@@ -130,6 +129,21 @@ export function dimensionValueLabel(dimension: DistributionDimension, value: str
     default:
       return value;
   }
+}
+
+/** 语言展示对：原始代码 / 中文名。未知标签会回退成原值，这时只显示一次，避免 "xx-YY / xx-YY" */
+export function localePairLabel(value: string) {
+  const label = localeLabel(value);
+  return label === value ? value : `${value} / ${label}`;
+}
+
+/**
+ * tooltip 可以比图表标签更详细。
+ * 目前只有语言需要：图表上显示 en-US，tooltip 显示 en-US / 英语（美国）。
+ * 其他维度没有额外信息，返回 undefined，让图表回退用 label。
+ */
+export function dimensionTooltipLabel(dimension: DistributionDimension, value: string) {
+  return dimension === "locale" ? localePairLabel(value) : undefined;
 }
 
 /** 图表配色：优先明快的红 / 黄 / 绿 / 蓝，再补其他鲜艳色 */

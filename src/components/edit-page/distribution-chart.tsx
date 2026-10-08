@@ -6,6 +6,8 @@ import { cn, formatNumber } from "@/lib/utils";
 export type DistributionDatum = {
   value: string;
   label: string;
+  /** tooltip 里用的更详细文案；缺省时回退到 label */
+  tooltip?: string;
   count: number;
   color: string;
 };
@@ -66,7 +68,7 @@ function ChartTooltip({ hover, share, width }: { hover: HoverState; share: numbe
     >
       <div className="flex items-center gap-1.5">
         <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: hover.item.color }} />
-        <span className="font-medium text-[var(--ink)]">{hover.item.label}</span>
+        <span className="font-medium text-[var(--ink)]">{hover.item.tooltip ?? hover.item.label}</span>
       </div>
       <div className="mt-1.5 flex items-center gap-3 text-[var(--subtle)]">
         <span>

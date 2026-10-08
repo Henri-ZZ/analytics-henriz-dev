@@ -5,7 +5,12 @@ import { BarChart3, PieChart, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DistributionChart, type DistributionDatum } from "@/components/edit-page/distribution-chart";
-import { chartColor, DISTRIBUTION_DIMENSION_OPTIONS, dimensionValueLabel } from "@/lib/edit-page-display";
+import {
+  chartColor,
+  DISTRIBUTION_DIMENSION_OPTIONS,
+  dimensionTooltipLabel,
+  dimensionValueLabel,
+} from "@/lib/edit-page-display";
 import type { DistributionDimension, DistributionResult } from "@/lib/edit-page-types";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -51,6 +56,7 @@ export function DistributionExplorer({ defaultStart, defaultEnd }: { defaultStar
     result?.items.map((item, index) => ({
       value: item.value,
       label: dimensionValueLabel(result.dimension, item.value),
+      tooltip: dimensionTooltipLabel(result.dimension, item.value),
       count: item.count,
       color: chartColor(index),
     })) ?? [];
