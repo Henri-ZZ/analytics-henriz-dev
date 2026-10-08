@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DailyUsagePanel } from "@/components/edit-page/daily-usage-panel";
 import { JsonView } from "@/components/edit-page/json-view";
 import { cn, formatNumber } from "@/lib/utils";
+import { displayDate } from "@/lib/timezone";
 import { browserLabel, licenseLabel, osLabel, STATUS_META } from "@/lib/edit-page-display";
 import type { InstallationRow } from "@/lib/edit-page-types";
 
@@ -32,11 +33,6 @@ export const DEFAULT_PAGE_SIZE = 10;
 function browserName(row: InstallationRow) {
   const version = row.browserMajorVersion ? ` ${row.browserMajorVersion}` : "";
   return `${browserLabel(row.browser)}${version}`;
-}
-
-/** 日期统一展示为 YYYY-MM-DD（ISO 串前 10 位就是日期部分） */
-function formatDate(iso: string) {
-  return iso.slice(0, 10);
 }
 
 function relativeDays(days: number) {
@@ -210,7 +206,9 @@ const columns = [
     header: ({ column }) => <SortHeader column={column} label="首次上报" />,
     // ISO 8601 字符串按字典序比较即等价于按时间比较
     sortingFn: "basic",
-    cell: ({ getValue }) => <span className="whitespace-nowrap text-xs text-[var(--secondary)]">{formatDate(getValue())}</span>,
+    cell: ({ getValue }) => (
+      <span className="whitespace-nowrap text-xs text-[var(--secondary)]">{displayDate(getValue())}</span>
+    ),
   }),
   columnHelper.accessor("lastSeenAt", {
     header: ({ column }) => <SortHeader column={column} label="最近上报" />,
@@ -219,7 +217,7 @@ const columns = [
     cell: ({ row }) => (
       <div className="whitespace-nowrap text-xs">
         <div className="text-[var(--secondary)]">{relativeDays(row.original.daysSinceLastSeen)}</div>
-        <div className="mt-0.5 text-[var(--subtle)]">{formatDate(row.original.lastSeenAt)}</div>
+        <div className="mt-0.5 text-[var(--subtle)]">{displayDate(row.original.lastSeenAt)}</div>
       </div>
     ),
   }),

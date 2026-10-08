@@ -1,5 +1,6 @@
 import "server-only";
 import { neon } from "@neondatabase/serverless";
+import { displayDaysAgo } from "@/lib/timezone";
 import type {
   DailyUsageRow,
   DistributionDimension,
@@ -40,12 +41,6 @@ function db() {
 type RawInstallation = Omit<InstallationRow, "status" | "daysSinceLastSeen">;
 
 type StatusCutoffs = { activeCutoff: string; churnCutoff: string };
-
-function daysSince(iso: string) {
-  const timestamp = Date.parse(iso);
-  if (Number.isNaN(timestamp)) return 0;
-  return Math.max(0, Math.floor((Date.now() - timestamp) / DAY_MS));
-}
 
 /** 生成秒精度 ISO 串，与 SQL 里 to_char(..., 'YYYY-MM-DD"T"HH24:MI:SS"Z"') 的格式保持一致 */
 function isoSecond(date: Date) {
@@ -107,7 +102,7 @@ export async function listInstallations(limit = EDIT_PAGE_LIST_LIMIT): Promise<I
   return rows.map((row) => ({
     ...row,
     status: deriveStatus(row.uninstalledAt, row.lastSeenAt, cutoffs),
-    daysSinceLastSeen: daysSince(row.lastSeenAt),
+    daysSinceLastSeen: displayDaysAgo(row.lastSeenAt),
   }));
 }
 

@@ -17,6 +17,7 @@ import * as Avatar from "@radix-ui/react-avatar";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { analyticsApps } from "@/lib/apps";
 import { cn } from "@/lib/utils";
+import { DISPLAY_TIME_ZONE_LABEL } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -198,7 +199,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Search size={16} />
             <span>统一查看 Henri 产品数据</span>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <span
+              title="站内时间统一按 UTC+8（上海）展示；数据库里存的是 UTC"
+              className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--secondary)]"
+            >
+              {DISPLAY_TIME_ZONE_LABEL}
+            </span>
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button className="flex items-center gap-2 rounded-full p-1.5 pr-2 text-left hover:bg-white">

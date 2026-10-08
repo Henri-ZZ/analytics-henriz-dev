@@ -40,7 +40,7 @@ export type InstallationRow = {
   optionalPermissions: Record<string, unknown>;
   /** 由 uninstalledAt / lastSeenAt 与滚动窗口阈值推导 */
   status: InstallationStatus;
-  /** 距最近一次使用过去的天数 */
+  /** 按展示时区（UTC+8）算的日历日差：0 = 今天，1 = 昨天 */
   daysSinceLastSeen: number;
 };
 
