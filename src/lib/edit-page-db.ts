@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { displayDaysAgo } from "@/lib/timezone";
 import type {
   DailyUsageRow,
+  DeletedInstallationsResult,
   DistributionDimension,
   DistributionResult,
   EditPageSummary,
@@ -93,7 +94,11 @@ export async function listInstallations(limit = EDIT_PAGE_LIST_LIMIT): Promise<I
       CASE
         WHEN i."uninstalledAt" IS NULL THEN NULL
         ELSE to_char(i."uninstalledAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-      END AS "uninstalledAt"
+      END AS "uninstalledAt",
+      CASE
+        WHEN i."filteredAt" IS NULL THEN NULL
+        ELSE to_char(i."filteredAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+      END AS "filteredAt"
     FROM "Installation" i
     ORDER BY i."lastSeenAt" DESC
     LIMIT ${limit}
@@ -142,6 +147,7 @@ export async function getInstallationSummary(): Promise<EditPageSummary> {
   const [row] = (await sql`
     SELECT
       (SELECT COUNT(*) FROM "Installation")::int AS "total",
+      (SELECT COUNT(*) FROM "Installation" WHERE "filteredAt" IS NOT NULL)::int AS "filtered",
       (SELECT COUNT(*) FROM "Installation" WHERE "uninstalledAt" IS NOT NULL)::int AS "uninstalled",
       (
         SELECT COUNT(*) FROM "Installation"
@@ -224,12 +230,13 @@ export async function getInstallationDistribution(
           ELSE 'churned'
         END AS "status"
       FROM "Installation" i
-      WHERE EXISTS (
-        SELECT 1 FROM "UsageDaily" ud
-        WHERE ud."installationId" = i."installationId"
-          AND ud."date" >= ${start}::date
-          AND ud."date" <= ${end}::date
-      )
+      WHERE i."filteredAt" IS NULL
+        AND EXISTS (
+          SELECT 1 FROM "UsageDaily" ud
+          WHERE ud."installationId" = i."installationId"
+            AND ud."date" >= ${start}::date
+            AND ud."date" <= ${end}::date
+        )
     )
     SELECT
       CASE ${dimension}::text
@@ -254,6 +261,54 @@ export async function getInstallationDistribution(
     total: rows.reduce((sum, row) => sum + row.count, 0),
     items: rows,
   };
+}
+
+/**
+ * 打上 / 取消「过滤」标记。
+ *
+ * filteredAt 非空即"已过滤"，所以取消过滤就是写回 NULL。
+ * WHERE 里带了状态条件，所以只更新真正需要变的行，返回值是"实际改动行数"——
+ * 对同一批重复点标记不会虚增计数。
+ */
+export async function setInstallationsFiltered(installationIds: string[], filtered: boolean): Promise<number> {
+  const ids = [...new Set(installationIds.filter(isUuid))];
+  if (ids.length === 0) return 0;
+
+  const sql = db();
+  const rows = (filtered
+    ? await sql`
+        UPDATE "Installation" SET "filteredAt" = now()
+        WHERE "installationId" = ANY(${ids}::uuid[]) AND "filteredAt" IS NULL
+        RETURNING 1
+      `
+    : await sql`
+        UPDATE "Installation" SET "filteredAt" = NULL
+        WHERE "installationId" = ANY(${ids}::uuid[]) AND "filteredAt" IS NOT NULL
+        RETURNING 1
+      `) as unknown as unknown[];
+
+  return rows.length;
+}
+
+/**
+ * 物理删除安装及其关联数据。
+ *
+ * UsageDaily / TelemetryRequest 的外键本来就是 ON DELETE CASCADE，
+ * 但这里仍按「先子后父」显式删除：一是不依赖外键定义，二是能拿到各表真实的删除行数用于回显。
+ * 三条语句放在一个事务里，避免出现「子表删了、父表没删」的中间态。
+ */
+export async function deleteInstallations(installationIds: string[]): Promise<DeletedInstallationsResult> {
+  const ids = [...new Set(installationIds.filter(isUuid))];
+  if (ids.length === 0) return { installations: 0, usage: 0, requests: 0 };
+
+  const sql = db();
+  const [usage, requests, installations] = (await sql.transaction([
+    sql`DELETE FROM "UsageDaily" WHERE "installationId" = ANY(${ids}::uuid[]) RETURNING 1`,
+    sql`DELETE FROM "TelemetryRequest" WHERE "installationId" = ANY(${ids}::uuid[]) RETURNING 1`,
+    sql`DELETE FROM "Installation" WHERE "installationId" = ANY(${ids}::uuid[]) RETURNING 1`,
+  ])) as unknown as [unknown[], unknown[], unknown[]];
+
+  return { installations: installations.length, usage: usage.length, requests: requests.length };
 }
 
 /** 单个安装近 N 天的每日使用明细 */
@@ -314,6 +369,10 @@ export async function getEventDailyCounts(
         END
         FROM "UsageDaily" ud, jsonb_each_text(ud."events") AS e(key, value)
         WHERE ud."date" = d.day AND e.key = s.key
+          AND NOT EXISTS (
+            SELECT 1 FROM "Installation" i
+            WHERE i."installationId" = ud."installationId" AND i."filteredAt" IS NOT NULL
+          )
       ), 0)::int AS "count"
     FROM days d
     CROSS JOIN selected s

@@ -34,6 +34,12 @@ export type InstallationRow = {
   lastSeenAt: string;
   /** ISO 8601 字符串；null 表示未观测到卸载 */
   uninstalledAt: string | null;
+  /**
+   * ISO 8601 字符串；null = 未过滤。
+   * 非空表示这条安装已被判定为测试/脏数据，不参与分布分析与事件分析。
+   * 用时间戳兼作"是否过滤"的开关，不额外存布尔值，避免两者不一致。
+   */
+  filteredAt: string | null;
   /** Installation.settings 原始 JSON */
   settings: Record<string, unknown>;
   /** Installation.optionalPermissions 原始 JSON */
@@ -42,6 +48,13 @@ export type InstallationRow = {
   status: InstallationStatus;
   /** 按展示时区（UTC+8）算的日历日差：0 = 今天，1 = 昨天 */
   daysSinceLastSeen: number;
+};
+
+/** 删除安装的结果：三张表各自实际删除的行数 */
+export type DeletedInstallationsResult = {
+  installations: number;
+  usage: number;
+  requests: number;
 };
 
 export type DailyUsageRow = {
@@ -121,6 +134,8 @@ export type FilterOptions = {
 
 export type EditPageSummary = {
   total: number;
+  /** 已打过滤标的安装数（不参与分布分析与事件分析） */
+  filtered: number;
   active: number;
   idle: number;
   churned: number;

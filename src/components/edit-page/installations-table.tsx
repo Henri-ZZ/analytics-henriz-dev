@@ -13,11 +13,13 @@ import {
   type ExpandedState,
   type OnChangeFn,
   type PaginationState,
+  type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
 import * as Popover from "@radix-ui/react-popover";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DailyUsagePanel } from "@/components/edit-page/daily-usage-panel";
@@ -137,6 +139,26 @@ const columnHelper = createColumnHelper<InstallationRow>();
 
 const columns = [
   columnHelper.display({
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        aria-label="全选本页"
+        checked={table.getIsAllPageRowsSelected()}
+        indeterminate={table.getIsSomePageRowsSelected()}
+        onChange={table.getToggleAllPageRowsSelectedHandler()}
+      />
+    ),
+    // 整行点击是展开每日明细，所以勾选框必须阻止冒泡
+    cell: ({ row }) => (
+      <Checkbox
+        aria-label={row.getIsSelected() ? "取消选择该安装" : "选择该安装"}
+        checked={row.getIsSelected()}
+        onChange={row.getToggleSelectedHandler()}
+        onClick={(event) => event.stopPropagation()}
+      />
+    ),
+  }),
+  columnHelper.display({
     id: "expander",
     header: () => null,
     cell: ({ row }) => (
@@ -158,6 +180,22 @@ const columns = [
     header: ({ column }) => <SortHeader column={column} label="序号" />,
     sortingFn: "basic",
     cell: ({ getValue }) => <span className="tabular-nums text-xs text-[var(--secondary)]">{formatNumber(getValue())}</span>,
+  }),
+  columnHelper.accessor("filteredAt", {
+    header: "过滤",
+    cell: ({ row }) => {
+      const filteredAt = row.original.filteredAt;
+      if (!filteredAt) return <span className="text-xs text-[var(--subtle)]">—</span>;
+
+      return (
+        <div className="whitespace-nowrap text-xs">
+          <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+            已过滤
+          </span>
+          <div className="mt-0.5 text-[var(--subtle)]">{displayDate(filteredAt)}</div>
+        </div>
+      );
+    },
   }),
   columnHelper.accessor("licenseType", {
     header: "授权",
@@ -233,18 +271,23 @@ const columns = [
 
 /**
  * 安装列表表格。数据由外层按筛选条件过滤后传入；
- * 分页状态提升到外层，方便「筛选变化 / 重新查询」时回到第一页。
+ * 分页与选中状态都提升到外层：前者为了「筛选变化 / 重新查询」时回到第一页，
+ * 后者为了在表格上方渲染删除工具栏。
  */
 export function InstallationsTable({
   data,
   hasFilters,
   pagination,
   onPaginationChange,
+  rowSelection,
+  onRowSelectionChange,
 }: {
   data: InstallationRow[];
   hasFilters: boolean;
   pagination: PaginationState;
   onPaginationChange: OnChangeFn<PaginationState>;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
 }) {
   const [expanded, setExpanded] = useState<ExpandedState>({});
   // 默认序号倒序（序号按 id 升序生成，所以等价于原来的 id 降序：最新安装在前）
@@ -253,9 +296,13 @@ export function InstallationsTable({
   const table = useReactTable({
     data,
     columns,
-    state: { expanded, pagination, sorting },
+    state: { expanded, pagination, sorting, rowSelection },
     onExpandedChange: setExpanded,
     onPaginationChange,
+    onRowSelectionChange,
+    // 选中状态以 installationId 为键；默认键是数据下标，筛选/排序后会指到别的行
+    getRowId: (row) => row.installationId,
+    enableRowSelection: true,
     // 排序变化后回到第一页；enableMultiSort 关闭保证同时只有一列参与排序
     onSortingChange: (updater) => {
       setSorting(updater);

@@ -10,6 +10,7 @@ const buttonVariants = cva(
         default: "bg-[var(--accent)] text-white hover:bg-[var(--accent-strong)]",
         outline: "border border-[var(--border)] bg-white hover:bg-[var(--muted)]",
         ghost: "hover:bg-[var(--muted)]",
+        destructive: "bg-rose-600 text-white hover:bg-rose-700",
       },
       size: { default: "h-10 px-4", sm: "h-8 px-3 text-xs", icon: "size-9" },
     },
