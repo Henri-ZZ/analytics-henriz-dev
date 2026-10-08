@@ -84,7 +84,14 @@ export type EventDailyResult = {
 };
 
 /** 分布分析支持的分组维度 */
-export type DistributionDimension = "browser" | "os" | "distribution" | "licenseType" | "currentVersion" | "status";
+export type DistributionDimension =
+  | "browser"
+  | "os"
+  | "locale"
+  | "distribution"
+  | "licenseType"
+  | "currentVersion"
+  | "status";
 
 export type DistributionItem = {
   /** 该维度下的原始值，例如 chrome / mac / cws / premium / 2.2.2 / active */

@@ -24,7 +24,7 @@ import { DailyUsagePanel } from "@/components/edit-page/daily-usage-panel";
 import { JsonView } from "@/components/edit-page/json-view";
 import { cn, formatNumber } from "@/lib/utils";
 import { displayDate } from "@/lib/timezone";
-import { browserLabel, licenseLabel, osLabel, STATUS_META } from "@/lib/edit-page-display";
+import { browserLabel, licenseLabel, localeLabel, osLabel, STATUS_META } from "@/lib/edit-page-display";
 import type { InstallationRow } from "@/lib/edit-page-types";
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -196,7 +196,9 @@ const columns = [
   }),
   columnHelper.accessor("locale", {
     header: "语言",
-    cell: ({ getValue }) => <span className="whitespace-nowrap text-xs text-[var(--secondary)]">{getValue()}</span>,
+    cell: ({ getValue }) => (
+      <span className="whitespace-nowrap text-xs text-[var(--secondary)]">{localeLabel(getValue())}</span>
+    ),
   }),
   columnHelper.accessor("distribution", {
     header: "渠道",

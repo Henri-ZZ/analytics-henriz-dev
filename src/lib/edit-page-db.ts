@@ -182,6 +182,7 @@ export async function getInstallationSummary(): Promise<EditPageSummary> {
 export const DISTRIBUTION_DIMENSIONS: DistributionDimension[] = [
   "browser",
   "os",
+  "locale",
   "distribution",
   "licenseType",
   "currentVersion",
@@ -212,6 +213,7 @@ export async function getInstallationDistribution(
       SELECT
         i."browser",
         i."os",
+        i."locale",
         i."distribution",
         i."licenseType",
         i."currentVersion",
@@ -233,6 +235,7 @@ export async function getInstallationDistribution(
       CASE ${dimension}::text
         WHEN 'browser' THEN "browser"
         WHEN 'os' THEN "os"
+        WHEN 'locale' THEN "locale"
         WHEN 'distribution' THEN "distribution"
         WHEN 'licenseType' THEN "licenseType"
         WHEN 'currentVersion' THEN "currentVersion"
