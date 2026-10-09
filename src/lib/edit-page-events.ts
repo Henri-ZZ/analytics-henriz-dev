@@ -4,7 +4,8 @@
  * 键名严格对应 edit-page-web 的
  * `src/lib/telemetry/constants.ts` → TELEMETRY_EVENTS / ACTIVATION_FAILURE_REASONS，
  * 说明依据 `docs/EDIT_PAGE_TELEMETRY_SPEC.md` §7.2「Counting semantics」。
- * 上游新增事件时需要同步这里。
+ * 上游新增事件时需要同步这里；两边的键集合必须完全一致，可用
+ * EDIT_PAGE_COUNTER_KEYS 与上游 TELEMETRY_EVENTS + 原因子键逐项比对。
  */
 
 export type EditPageEvent = {
@@ -23,15 +24,37 @@ export type EditPageEventSection = {
 
 export const EDIT_PAGE_EVENT_SECTIONS: EditPageEventSection[] = [
   {
+    title: "工具入口",
+    note: "只有这四个是「界面 / 工具进入」计数：popup.open 测量弹窗界面本身，另外三个分别测量三个工具被进入。它们**只统计用户主动进入**：控制面板的「点击图标时自动进入」、以及导入图片后自动进入替换模式，即使模式真的启动了也不计。工具入口之间可以互相比较，但不得用动作计数（text.edit、element.remove、image.replace）反推入口次数。",
+    events: [
+      {
+        key: "popup.open",
+        description:
+          "扩展弹窗完成打开。每次弹窗加载计 1 次，早于任何提前返回；额度锁定时 Service Worker 主动打开弹窗的那次也计。",
+      },
+      {
+        key: "edit.start",
+        description:
+          "文字编辑模式由「未激活」切换到「激活」，且由用户主动进入。已在激活状态下重复点击不计，控制面板的自动进入不计。",
+      },
+      {
+        key: "remove.start",
+        description:
+          "移除元素模式由「未激活」切换到「激活」且模式确实启动，且由用户主动进入。重复点击不计，在不支持的页面上启动失败不计，控制面板的自动进入不计。",
+      },
+      {
+        key: "image.replace.start",
+        description:
+          "选定图片后，替换模式由「未激活」切换到「激活」，且由用户主动点击进入。重复点击不计，导入图片后自动进入替换模式不计。",
+      },
+    ],
+  },
+  {
     title: "核心使用",
     events: [
       {
         key: "dashboard.open",
         description: "扩展控制面板完成打开。每次页面加载计 1 次。",
-      },
-      {
-        key: "edit.start",
-        description: "编辑模式从「未激活」切换到「激活」。已在激活状态下重复点击不计。",
       },
       {
         key: "text.edit",

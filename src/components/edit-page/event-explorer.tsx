@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 
 const PRESET_DAYS = [7, 30, 90];
 const MAX_SELECTED = 12;
-const DEFAULT_SELECTED = ["dashboard.open", "edit.start", "text.edit"];
+// 工具入口是一组四个计数器（弹窗 + 三个工具），默认把它们一起展示，
+// 而不是只拿 edit.start 代表入口。
+const DEFAULT_SELECTED = ["popup.open", "edit.start", "remove.start", "image.replace.start"];
 const DAY_MS = 86_400_000;
 
 function countDays(start: string, end: string) {
