@@ -1,5 +1,6 @@
 import "server-only";
 import { neon } from "@neondatabase/serverless";
+import { FAST_UNINSTALL_SECONDS } from "@/lib/edit-page-display";
 import { displayDaysAgo } from "@/lib/timezone";
 import type {
   DailyUsageRow,
@@ -11,6 +12,10 @@ import type {
   FilterOptions,
   InstallationRow,
   InstallationStatus,
+  UninstallDailyPoint,
+  UninstallDailyResult,
+  UninstallDetailResult,
+  UninstallDetailRow,
 } from "@/lib/edit-page-types";
 
 /** 明细表格默认展示的天数 */
@@ -402,4 +407,84 @@ export async function getEventDailyCounts(
       return { key, counts, total: counts.reduce((sum, value) => sum + value, 0) };
     }),
   };
+}
+
+/**
+ * 卸载分析：按展示时区（UTC+8）的日历日，统计每日新增安装、卸载数、快速卸载数。
+ *
+ * 两个口径说明：
+ * 1. 日轴是 firstSeenAt / uninstalledAt 换算到 UTC+8 后的自然日，
+ *    **不是** UsageDaily.date 那套「客户端按 UTC 上报的日历日」——这里统计的是服务端瞬时刻，
+ *    所以和事件页、分布页的时间轴口径不同，别混着对；
+ * 2. 已打过滤标的安装全部排除，与分布分析、事件分析保持一致。
+ */
+export async function getUninstallDaily(start: string, end: string): Promise<UninstallDailyResult> {
+  const sql = db();
+
+  const days = (await sql`
+    WITH days AS (
+      SELECT generate_series(${start}::date, ${end}::date, interval '1 day')::date AS day
+    )
+    SELECT
+      to_char(d.day, 'YYYY-MM-DD') AS "date",
+      (
+        SELECT COUNT(*) FROM "Installation" i
+        WHERE i."filteredAt" IS NULL
+          AND (i."firstSeenAt" AT TIME ZONE 'Asia/Shanghai')::date = d.day
+      )::int AS "installs",
+      (
+        SELECT COUNT(*) FROM "Installation" i
+        WHERE i."filteredAt" IS NULL
+          AND i."uninstalledAt" IS NOT NULL
+          AND (i."uninstalledAt" AT TIME ZONE 'Asia/Shanghai')::date = d.day
+      )::int AS "uninstalls",
+      (
+        SELECT COUNT(*) FROM "Installation" i
+        WHERE i."filteredAt" IS NULL
+          AND i."uninstalledAt" IS NOT NULL
+          AND (i."uninstalledAt" AT TIME ZONE 'Asia/Shanghai')::date = d.day
+          AND i."uninstalledAt" - i."firstSeenAt" <= make_interval(secs => ${FAST_UNINSTALL_SECONDS}::int)
+      )::int AS "fastUninstalls"
+    FROM days d
+    ORDER BY d.day
+  `) as unknown as UninstallDailyPoint[];
+
+  return { start, end, days };
+}
+
+/**
+ * 卸载分析：某一天（展示时区的日历日）卸载掉的安装明细。
+ * 按存活时长升序，装完马上就走的排在最前面。
+ */
+export async function getUninstallDetail(date: string): Promise<UninstallDetailResult> {
+  const sql = db();
+
+  const rows = (await sql`
+    WITH ranked AS (
+      SELECT "installationId", (ROW_NUMBER() OVER (ORDER BY "id"))::int AS "seq"
+      FROM "Installation"
+    )
+    SELECT
+      i."installationId"::text AS "installationId",
+      r."seq",
+      to_char(i."firstSeenAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "firstSeenAt",
+      to_char(i."uninstalledAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "uninstalledAt",
+      ROUND(EXTRACT(EPOCH FROM (i."uninstalledAt" - i."firstSeenAt")))::int AS "survivalSeconds",
+      (i."uninstalledAt" - i."firstSeenAt" <= make_interval(secs => ${FAST_UNINSTALL_SECONDS}::int)) AS "fast",
+      i."currentVersion",
+      i."distribution",
+      i."browser",
+      i."browserMajorVersion",
+      i."os",
+      i."locale",
+      i."licenseType"
+    FROM "Installation" i
+    JOIN ranked r ON r."installationId" = i."installationId"
+    WHERE i."filteredAt" IS NULL
+      AND i."uninstalledAt" IS NOT NULL
+      AND (i."uninstalledAt" AT TIME ZONE 'Asia/Shanghai')::date = ${date}::date
+    ORDER BY "survivalSeconds" ASC, i."id" ASC
+  `) as unknown as UninstallDetailRow[];
+
+  return { date, rows };
 }

@@ -356,7 +356,7 @@ export function InstallationsTable({
               {row.getIsExpanded() && (
                 <TableRow className="border-b-0 hover:bg-transparent">
                   <TableCell colSpan={row.getVisibleCells().length} className="p-0">
-                    <DailyUsagePanel key={row.original.installationId} installation={row.original} />
+                    <DailyUsagePanel key={row.original.installationId} installationId={row.original.installationId} />
                   </TableCell>
                 </TableRow>
               )}

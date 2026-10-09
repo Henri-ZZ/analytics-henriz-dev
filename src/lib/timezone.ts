@@ -35,6 +35,13 @@ export function displayDate(input: string | number): string {
   return new Date(ms + OFFSET_MS).toISOString().slice(0, 10);
 }
 
+/** 展示时区下的日期时间，精确到秒：YYYY-MM-DD HH:mm:ss */
+export function displayDateTime(input: string | number): string {
+  const ms = parseInstant(input);
+  if (ms === null) return "—";
+  return new Date(ms + OFFSET_MS).toISOString().slice(0, 19).replace("T", " ");
+}
+
 /**
  * input 距「今天」相差几个自然日（按展示时区的日历日算）：0 = 今天，1 = 昨天。
  *

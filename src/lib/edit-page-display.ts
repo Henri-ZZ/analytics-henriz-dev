@@ -5,6 +5,15 @@ import type { DistributionDimension, InstallationStatus } from "@/lib/edit-page-
  * 无外部依赖、无副作用，服务端与客户端都可安全引用。
  */
 
+/**
+ * 「快速卸载」阈值：安装到卸载之间存活不超过这个秒数，就算装完马上就走。
+ * UI 上的分界文案与 SQL 里的过滤共用这一个常量。
+ */
+export const FAST_UNINSTALL_SECONDS = 5 * 60;
+
+/** 「快速卸载」的展示名；图表图例、明细标签、口径说明共用，避免各处写法不一致 */
+export const FAST_UNINSTALL_LABEL = "快速卸载";
+
 export const BROWSER_LABELS: Record<string, string> = {
   chrome: "Chrome",
   edge: "Edge",

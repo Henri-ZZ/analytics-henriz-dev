@@ -74,6 +74,52 @@ export type DailyUsageRow = {
   events: Record<string, number>;
 };
 
+/** 卸载分析：某一天的三个数量 */
+export type UninstallDailyPoint = {
+  /** 展示时区（UTC+8）的日历日 */
+  date: string;
+  /** 当天新增安装数（按 firstSeenAt 归日） */
+  installs: number;
+  /** 当天收到的卸载数（按 uninstalledAt 归日） */
+  uninstalls: number;
+  /** 其中存活时长不超过快速卸载阈值的 */
+  fastUninstalls: number;
+};
+
+export type UninstallDailyResult = {
+  start: string;
+  end: string;
+  days: UninstallDailyPoint[];
+};
+
+/** 卸载分析：某一天里卸载掉的安装明细 */
+export type UninstallDetailRow = {
+  installationId: string;
+  /** 全局序号，与安装分析页一致，便于交叉对照 */
+  seq: number;
+  /** ISO 8601 字符串（UTC） */
+  firstSeenAt: string;
+  /** ISO 8601 字符串（UTC） */
+  uninstalledAt: string;
+  /** 存活时长（秒）= uninstalledAt − firstSeenAt */
+  survivalSeconds: number;
+  /** 是否属于「快速卸载」 */
+  fast: boolean;
+  currentVersion: string;
+  distribution: string;
+  browser: string;
+  browserMajorVersion: number | null;
+  os: string;
+  locale: string;
+  licenseType: string;
+};
+
+export type UninstallDetailResult = {
+  /** YYYY-MM-DD（展示时区的日历日） */
+  date: string;
+  rows: UninstallDetailRow[];
+};
+
 /** 事件分析：单个事件在时间范围内的逐日次数 */
 export type EventDailySeries = {
   key: string;

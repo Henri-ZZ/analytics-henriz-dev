@@ -6,7 +6,7 @@ import { Loader2, X } from "lucide-react";
 import { JsonView } from "@/components/edit-page/json-view";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumber } from "@/lib/utils";
-import type { DailyUsageRow, InstallationRow } from "@/lib/edit-page-types";
+import type { DailyUsageRow } from "@/lib/edit-page-types";
 
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
@@ -53,19 +53,20 @@ function loadUsage(installationId: string): Promise<DailyUsageRow[]> {
   return request;
 }
 
-export function DailyUsagePanel({ installation }: { installation: InstallationRow }) {
+/** 只要 installationId 就够，所以安装分析、卸载分析的明细表都能复用 */
+export function DailyUsagePanel({ installationId }: { installationId: string }) {
   const [activeDay, setActiveDay] = useState<DailyUsageRow | null>(null);
   const [state, setState] = useState<UsageState>(() => {
-    const cached = resolvedUsage.get(installation.installationId);
+    const cached = resolvedUsage.get(installationId);
     return cached ? { status: "ready", days: cached } : { status: "loading", days: [] };
   });
 
   useEffect(() => {
-    if (resolvedUsage.has(installation.installationId)) return;
+    if (resolvedUsage.has(installationId)) return;
 
     let active = true;
 
-    loadUsage(installation.installationId)
+    loadUsage(installationId)
       .then((days) => {
         if (active) setState({ status: "ready", days });
       })
@@ -76,15 +77,13 @@ export function DailyUsagePanel({ installation }: { installation: InstallationRo
     return () => {
       active = false;
     };
-  }, [installation.installationId]);
-
-  const maxEvents = Math.max(...state.days.map((day) => day.totalEvents), 1);
+  }, [installationId]);
 
   return (
     <div className="border-t border-dashed border-[var(--border)] bg-[var(--muted)]/50 px-5 py-4">
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--subtle)]">
         <span className="font-medium text-[var(--secondary)]">每日使用明细 · 近 30 天</span>
-        <span className="break-all font-mono">installationId：{installation.installationId}</span>
+        <span className="break-all font-mono">installationId：{installationId}</span>
       </div>
 
       {state.status === "loading" && (
@@ -117,7 +116,6 @@ export function DailyUsagePanel({ installation }: { installation: InstallationRo
                 <TableHead>打开面板</TableHead>
                 <TableHead>图片替换</TableHead>
                 <TableHead>总事件</TableHead>
-                <TableHead className="w-40">强度</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -139,14 +137,6 @@ export function DailyUsagePanel({ installation }: { installation: InstallationRo
                   <TableCell className="tabular-nums text-[var(--secondary)]">{formatNumber(day.dashboardOpens)}</TableCell>
                   <TableCell className="tabular-nums text-[var(--secondary)]">{formatNumber(day.imageReplaces)}</TableCell>
                   <TableCell className="tabular-nums text-[var(--secondary)]">{formatNumber(day.totalEvents)}</TableCell>
-                  <TableCell>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--muted)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--accent)]/70"
-                        style={{ width: `${Math.max(4, (day.totalEvents / maxEvents) * 100)}%` }}
-                      />
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -162,9 +152,7 @@ export function DailyUsagePanel({ installation }: { installation: InstallationRo
               <div className="min-w-0">
                 <Dialog.Title className="text-sm font-semibold">原始 events JSON</Dialog.Title>
                 <Dialog.Description className="mt-1 break-all text-xs leading-5 text-[var(--subtle)]">
-                  {activeDay
-                    ? `${activeDay.date} · ${installation.installationId}`
-                    : ""}
+                  {activeDay ? `${activeDay.date} · ${installationId}` : ""}
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
