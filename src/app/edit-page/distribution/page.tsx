@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { DistributionExplorer } from "@/components/edit-page/distribution-explorer";
+import { displayDate } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "分布分析" };
 export const dynamic = "force-dynamic";
@@ -8,11 +9,11 @@ export const dynamic = "force-dynamic";
 const DAY_MS = 86_400_000;
 
 export default function EditPageDistribution() {
-  // 默认区间按 UTC 日历日算，和库里 UsageDaily.date 的口径一致
-  const now = new Date();
-  const endDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const defaultEnd = endDay.toISOString().slice(0, 10);
-  const defaultStart = new Date(endDay.getTime() - 6 * DAY_MS).toISOString().slice(0, 10);
+  // 「今天」按展示时区（UTC+8）算：按 UTC 算的话，北京时间 0:00–8:00 会判成昨天，
+  // 日期选择器就把今天禁掉了（选不到今天）。数据轴仍是 UsageDaily.date 的 UTC 日历日。
+  const now = Date.now();
+  const defaultEnd = displayDate(now);
+  const defaultStart = displayDate(now - 6 * DAY_MS);
 
   return (
     <div>

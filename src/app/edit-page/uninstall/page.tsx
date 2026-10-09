@@ -5,24 +5,19 @@ import {
   FAST_UNINSTALL_LABEL,
   FAST_UNINSTALL_SECONDS,
 } from "@/lib/edit-page-display";
-import { DISPLAY_UTC_OFFSET_HOURS } from "@/lib/timezone";
+import { displayDate } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "卸载分析" };
 export const dynamic = "force-dynamic";
 
 const DAY_MS = 86_400_000;
-/** 展示时区相对 UTC 的偏移，用来把「今天」算成 UTC+8 的自然日 */
-const DISPLAY_OFFSET_MS = DISPLAY_UTC_OFFSET_HOURS * 3600_000;
 
 export default function EditPageUninstall() {
   // 注意：这一页的日轴是服务端瞬时刻（firstSeenAt / uninstalledAt）换算到 UTC+8 后的自然日，
   // 和事件页、分布页那套「UsageDaily.date 的 UTC 日历日」不是同一个东西，所以默认区间按 UTC+8 的今天算。
-  const now = new Date();
-  const endMs =
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) +
-    DISPLAY_OFFSET_MS;
-  const end = new Date(endMs).toISOString().slice(0, 10);
-  const start = new Date(endMs - 6 * DAY_MS).toISOString().slice(0, 10);
+  const now = Date.now();
+  const end = displayDate(now);
+  const start = displayDate(now - 6 * DAY_MS);
 
   return (
     <div>
