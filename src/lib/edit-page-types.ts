@@ -48,7 +48,7 @@ export type InstallationRow = {
   status: InstallationStatus;
   /** 按展示时区（UTC+8）算的日历日差：0 = 今天，1 = 昨天 */
   daysSinceLastSeen: number;
-  /** 近 30 天使用强度综合分，0–100；只由用户主动功能操作与活跃频率计算 */
+  /** 近 30 天使用强度综合分，0–100，保留两位小数；只由用户主动功能操作与活跃频率计算 */
   usageIntensity: number;
   /** 近 30 天内有任何遥测上报的天数 */
   reportedDays30d: number;

@@ -84,7 +84,7 @@ function IntensityHeader<TData, TValue>({ column }: { column: Column<TData, TVal
           </button>
         </TooltipTrigger>
         <TooltipContent className="max-w-80">
-          近 30 天综合分：60% 看主动使用天数占可观察天数的比例，40% 看活跃日平均主动操作次数（12 次/日封顶）。页面打开、生命周期、授权回检和失败等其他事件不计分。
+          近 30 天综合分：活跃规律性 55 分、活跃日操作深度 35 分、累计主动操作量 10 分。操作次数使用连续对数曲线，既区分不同强度，也降低极端单日爆发的影响。页面打开、生命周期、授权回检和失败等其他事件不计分。
         </TooltipContent>
       </Tooltip>
     </div>
@@ -244,7 +244,9 @@ const columns = [
       return (
         <div className="min-w-32 whitespace-nowrap text-xs">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-base font-semibold tabular-nums text-[var(--ink)]">{item.usageIntensity}</span>
+            <span className="text-base font-semibold tabular-nums text-[var(--ink)]">
+              {item.usageIntensity.toFixed(2)}
+            </span>
           </div>
           <div className="mt-0.5 text-[var(--secondary)]">
             <span className="tabular-nums">{item.activeDays30d} 天</span>

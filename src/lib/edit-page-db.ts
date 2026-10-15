@@ -171,18 +171,27 @@ export async function listInstallations(limit = EDIT_PAGE_LIST_LIMIT): Promise<I
         COALESCE(u."activeEvents30d", 0)::numeric / GREATEST(COALESCE(u."activeDays30d", 0), 1),
         1
       )::float8 AS "activeEventsPerDay30d",
-      ROUND(100 * (
-        0.6 * LEAST(
+      ROUND(
+        -- 规律性（55 分）：在安装后的可观察天数里，有主动操作的日期占比。
+        55 * LEAST(
           COALESCE(u."activeDays30d", 0)::numeric /
             GREATEST(LEAST(30, CURRENT_DATE - (i."firstSeenAt" AT TIME ZONE 'UTC')::date + 1), 1),
           1
         )
-        + 0.4 * LEAST(
-          COALESCE(u."activeEvents30d", 0)::numeric /
-            GREATEST(COALESCE(u."activeDays30d", 0), 1) / 12,
+        -- 操作深度（35 分）：活跃日平均主动操作数；对数曲线让 3 次与 17 次明显拉开，
+        -- 同时降低极端单日爆发的边际收益，30 次/活跃日达到该项满分。
+        + 35 * LEAST(
+          LN(1 + COALESCE(u."activeEvents30d", 0)::numeric /
+            GREATEST(COALESCE(u."activeDays30d", 0), 1)) / LN(31::numeric),
           1
         )
-      ))::int AS "usageIntensity"
+        -- 累计投入（10 分）：补充区分长期稳定用户与偶发高强度用户，300 次达到满分。
+        + 10 * LEAST(
+          LN(1 + COALESCE(u."activeEvents30d", 0)::numeric) / LN(301::numeric),
+          1
+        ),
+        2
+      )::float8 AS "usageIntensity"
     FROM "Installation" i
     LEFT JOIN usage_30d u ON u."installationId" = i."installationId"
     ORDER BY i."lastSeenAt" DESC
