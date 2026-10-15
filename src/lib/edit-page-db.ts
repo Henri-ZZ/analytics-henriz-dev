@@ -172,24 +172,27 @@ export async function listInstallations(limit = EDIT_PAGE_LIST_LIMIT): Promise<I
         1
       )::float8 AS "activeEventsPerDay30d",
       ROUND(
-        -- 规律性（55 分）：在安装后的可观察天数里，有主动操作的日期占比。
-        55 * LEAST(
-          COALESCE(u."activeDays30d", 0)::numeric /
-            GREATEST(LEAST(30, CURRENT_DATE - (i."firstSeenAt" AT TIME ZONE 'UTC')::date + 1), 1),
-          1
-        )
-        -- 操作深度（35 分）：活跃日平均主动操作数；对数曲线让 3 次与 17 次明显拉开，
-        -- 同时降低极端单日爆发的边际收益，30 次/活跃日达到该项满分。
-        + 35 * LEAST(
-          LN(1 + COALESCE(u."activeEvents30d", 0)::numeric /
-            GREATEST(COALESCE(u."activeDays30d", 0), 1)) / LN(31::numeric),
-          1
-        )
-        -- 累计投入（10 分）：补充区分长期稳定用户与偶发高强度用户，300 次达到满分。
-        + 10 * LEAST(
-          LN(1 + COALESCE(u."activeEvents30d", 0)::numeric) / LN(301::numeric),
-          1
-        ),
+        CASE
+          WHEN COALESCE(u."activeEvents30d", 0) = 0 THEN 0
+          ELSE
+            -- 规律性（35 分）：Beta(2,1) 先验平滑，避免新用户因多观察一天就骤降。
+            35 * LEAST(
+              (COALESCE(u."activeDays30d", 0) + 2)::numeric /
+                (GREATEST(LEAST(30, CURRENT_DATE - (i."firstSeenAt" AT TIME ZONE 'UTC')::date + 1), 1) + 3),
+              1
+            )
+            -- 操作深度（50 分）：让活跃日平均主动操作数成为主要信号。
+            + 50 * LEAST(
+              LN(1 + COALESCE(u."activeEvents30d", 0)::numeric /
+                GREATEST(COALESCE(u."activeDays30d", 0), 1)) / LN(31::numeric),
+              1
+            )
+            -- 累计投入（15 分）：补充区分长期稳定用户与偶发高强度用户。
+            + 15 * LEAST(
+              LN(1 + COALESCE(u."activeEvents30d", 0)::numeric) / LN(301::numeric),
+              1
+            )
+        END,
         2
       )::float8 AS "usageIntensity"
     FROM "Installation" i
