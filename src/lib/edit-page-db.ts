@@ -26,6 +26,35 @@ export const EDIT_PAGE_LIST_LIMIT = 2000;
 const DAY_MS = 86_400_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * 会明确体现用户使用产品能力的事件。页面打开、失败、生命周期、授权回检等事件
+ * 仍会进入「其他事件」，但不会抬高使用强度，避免后台活动制造高频用户。
+ */
+const ACTIVE_ACTION_EVENT_KEYS = [
+  "edit.start",
+  "remove.start",
+  "image.replace.start",
+  "text.edit",
+  "format.bold",
+  "format.italic",
+  "format.underline",
+  "format.strikethrough",
+  "format.font_size",
+  "format.text_color",
+  "format.background_color",
+  "image.replace",
+  "image.resize",
+  "image.import_local",
+  "image.import_url",
+  "element.remove",
+  "history.undo",
+  "history.redo",
+  "screenshot.viewport",
+  "screenshot.fullpage",
+  "screenshot.copy",
+  "screenshot.download",
+];
+
 /** 是否已配置 Edit Page 的 Neon 连接串 */
 export function isEditPageDbConfigured() {
   return Boolean(process.env.EDIT_PAGE_DATABASE_URL);
@@ -78,6 +107,36 @@ export async function listInstallations(limit = EDIT_PAGE_LIST_LIMIT): Promise<I
   const cutoffs = statusCutoffs();
 
   const rows = (await sql`
+    WITH usage_by_day AS (
+      SELECT
+        ud."installationId",
+        ud."date",
+        COALESCE(SUM(
+          CASE
+            WHEN e.key = ANY(string_to_array(${ACTIVE_ACTION_EVENT_KEYS.join(",")}, ','))
+              AND e.value ~ '^[0-9]+$'
+            THEN e.value::bigint
+            ELSE 0
+          END
+        ), 0)::int AS "activeEvents",
+        COALESCE(SUM(
+          CASE WHEN e.value ~ '^[0-9]+$' THEN e.value::bigint ELSE 0 END
+        ), 0)::int AS "totalEvents"
+      FROM "UsageDaily" ud
+      LEFT JOIN LATERAL jsonb_each_text(ud."events") AS e(key, value) ON true
+      WHERE ud."date" >= CURRENT_DATE - 29
+      GROUP BY ud."installationId", ud."date"
+    ),
+    usage_30d AS (
+      SELECT
+        "installationId",
+        COUNT(*)::int AS "reportedDays30d",
+        COUNT(*) FILTER (WHERE "activeEvents" > 0)::int AS "activeDays30d",
+        SUM("activeEvents")::int AS "activeEvents30d",
+        (SUM("totalEvents") - SUM("activeEvents"))::int AS "otherEvents30d"
+      FROM usage_by_day
+      GROUP BY "installationId"
+    )
     SELECT
       i."id",
       -- 稠密序号：按 id 升序全局编号，最老的安装是 1。
@@ -103,8 +162,29 @@ export async function listInstallations(limit = EDIT_PAGE_LIST_LIMIT): Promise<I
       CASE
         WHEN i."filteredAt" IS NULL THEN NULL
         ELSE to_char(i."filteredAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-      END AS "filteredAt"
+      END AS "filteredAt",
+      COALESCE(u."reportedDays30d", 0)::int AS "reportedDays30d",
+      COALESCE(u."activeDays30d", 0)::int AS "activeDays30d",
+      COALESCE(u."activeEvents30d", 0)::int AS "activeEvents30d",
+      COALESCE(u."otherEvents30d", 0)::int AS "otherEvents30d",
+      ROUND(
+        COALESCE(u."activeEvents30d", 0)::numeric / GREATEST(COALESCE(u."activeDays30d", 0), 1),
+        1
+      )::float8 AS "activeEventsPerDay30d",
+      ROUND(100 * (
+        0.6 * LEAST(
+          COALESCE(u."activeDays30d", 0)::numeric /
+            GREATEST(LEAST(30, CURRENT_DATE - (i."firstSeenAt" AT TIME ZONE 'UTC')::date + 1), 1),
+          1
+        )
+        + 0.4 * LEAST(
+          COALESCE(u."activeEvents30d", 0)::numeric /
+            GREATEST(COALESCE(u."activeDays30d", 0), 1) / 12,
+          1
+        )
+      ))::int AS "usageIntensity"
     FROM "Installation" i
+    LEFT JOIN usage_30d u ON u."installationId" = i."installationId"
     ORDER BY i."lastSeenAt" DESC
     LIMIT ${limit}
   `) as unknown as RawInstallation[];

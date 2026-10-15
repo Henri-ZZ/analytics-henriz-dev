@@ -18,6 +18,16 @@ export const DISPLAY_TIME_ZONE_LABEL = "UTC+8";
 const OFFSET_MS = DISPLAY_UTC_OFFSET_HOURS * 60 * 60 * 1000;
 const DAY_MS = 86_400_000;
 
+/**
+ * 当前瞬时刻的统一边界。
+ *
+ * React 组件只接收这个结果，不在渲染逻辑里直接调用 Date.now()；服务端动态页仍会在
+ * 每次请求时取新值，客户端组件则应优先使用服务端传入的日期。
+ */
+export function currentInstant(): number {
+  return Date.now();
+}
+
 function parseInstant(input: string | number): number | null {
   const ms = typeof input === "number" ? input : Date.parse(input);
   return Number.isNaN(ms) ? null : ms;

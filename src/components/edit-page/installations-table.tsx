@@ -17,11 +17,12 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import * as Popover from "@radix-ui/react-popover";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DailyUsagePanel } from "@/components/edit-page/daily-usage-panel";
 import { JsonView } from "@/components/edit-page/json-view";
 import { cn, formatNumber } from "@/lib/utils";
@@ -64,6 +65,29 @@ function StatusPill({ status }: { status: InstallationRow["status"] }) {
       <span className={cn("size-1.5 rounded-full", meta.dot)} />
       {meta.label}
     </span>
+  );
+}
+
+function IntensityHeader<TData, TValue>({ column }: { column: Column<TData, TValue> }) {
+  return (
+    <div className="inline-flex items-center gap-1">
+      <SortHeader column={column} label="使用强度" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label="查看使用强度算法"
+            onClick={(event) => event.stopPropagation()}
+            className="rounded text-[var(--subtle)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          >
+            <Info size={13} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-80">
+          近 30 天综合分：60% 看主动使用天数占可观察天数的比例，40% 看活跃日平均主动操作次数（12 次/日封顶）。页面打开、生命周期、授权回检和失败等其他事件不计分。
+        </TooltipContent>
+      </Tooltip>
+    </div>
   );
 }
 
@@ -205,6 +229,35 @@ const columns = [
     header: "状态",
     cell: ({ getValue }) => <StatusPill status={getValue()} />,
   }),
+  columnHelper.accessor("usageIntensity", {
+    header: ({ column }) => <IntensityHeader column={column} />,
+    sortingFn: (rowA, rowB) => {
+      const score = rowA.original.usageIntensity - rowB.original.usageIntensity;
+      if (score !== 0) return score;
+      const days = rowA.original.activeDays30d - rowB.original.activeDays30d;
+      if (days !== 0) return days;
+      return rowA.original.activeEvents30d - rowB.original.activeEvents30d;
+    },
+    sortDescFirst: true,
+    cell: ({ row }) => {
+      const item = row.original;
+      return (
+        <div className="min-w-32 whitespace-nowrap text-xs">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base font-semibold tabular-nums text-[var(--ink)]">{item.usageIntensity}</span>
+          </div>
+          <div className="mt-0.5 text-[var(--secondary)]">
+            <span className="tabular-nums">{item.activeDays30d} 天</span>
+            <span aria-hidden="true"> · </span>
+            <span className="tabular-nums">{formatNumber(item.activeEventsPerDay30d)} 次/活跃日</span>
+          </div>
+          <div className="mt-0.5 text-[var(--subtle)]">
+            主动 {formatNumber(item.activeEvents30d)} · 其他 {formatNumber(item.otherEvents30d)}
+          </div>
+        </div>
+      );
+    },
+  }),
   columnHelper.accessor("currentVersion", {
     header: ({ column }) => <SortHeader column={column} label="版本" />,
     // 版本号按语义比较，否则 "2.10.0" 会被排在 "2.2.2" 前面
@@ -290,7 +343,7 @@ export function InstallationsTable({
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
 }) {
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  // 默认序号倒序（序号按 id 升序生成，所以等价于原来的 id 降序：最新安装在前）
+  // 默认序号倒序（序号按 id 升序生成，所以等价于原来的 id 降序：最新安装在前）。
   const [sorting, setSorting] = useState<SortingState>([{ id: "seq", desc: true }]);
 
   const table = useReactTable({

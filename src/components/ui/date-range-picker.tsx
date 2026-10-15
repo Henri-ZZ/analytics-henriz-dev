@@ -15,7 +15,6 @@ import {
 } from "react-day-picker";
 import { zhCN } from "react-day-picker/locale/zh-CN";
 import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { displayDate } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
 export type DateRangeValue = {
@@ -144,9 +143,9 @@ export function DateRangePicker({
   const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(toDate(value.start)));
 
   const maxDateValue = DATE_PATTERN.test(maxDate) ? toDate(maxDate) : undefined;
-  // 「今天」按展示时区（UTC+8）判断，别用运行环境的本地时区：北京时间的 0:00–8:00
-  // 在 UTC 下还是前一天，RDP 会把「今天」高亮到昨天。
-  const todayValue = toDate(displayDate(Date.now()));
+  // maxDate 由动态服务端页面按 UTC+8 的「今天」传入；直接复用可保证 SSR 与客户端首屏一致，
+  // 也避免渲染过程中读取系统时钟破坏 React 的纯函数约束。
+  const todayValue = maxDateValue;
   const selected = draft ?? { from: toDate(value.start), to: toDate(value.end) };
 
   const endMonthValue = maxDateValue ? startOfMonth(maxDateValue) : undefined;

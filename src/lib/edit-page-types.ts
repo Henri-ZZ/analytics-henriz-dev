@@ -48,6 +48,18 @@ export type InstallationRow = {
   status: InstallationStatus;
   /** 按展示时区（UTC+8）算的日历日差：0 = 今天，1 = 昨天 */
   daysSinceLastSeen: number;
+  /** 近 30 天使用强度综合分，0–100；只由用户主动功能操作与活跃频率计算 */
+  usageIntensity: number;
+  /** 近 30 天内有任何遥测上报的天数 */
+  reportedDays30d: number;
+  /** 近 30 天内至少发生一次主动功能操作的天数 */
+  activeDays30d: number;
+  /** 近 30 天用户主动触发的功能操作总次数 */
+  activeEvents30d: number;
+  /** 近 30 天自动、系统与辅助事件总次数 */
+  otherEvents30d: number;
+  /** 每个主动使用日平均发生的主动功能操作次数 */
+  activeEventsPerDay30d: number;
 };
 
 /** 删除安装的结果：三张表各自实际删除的行数 */

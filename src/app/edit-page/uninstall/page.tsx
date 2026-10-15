@@ -5,7 +5,7 @@ import {
   FAST_UNINSTALL_LABEL,
   FAST_UNINSTALL_SECONDS,
 } from "@/lib/edit-page-display";
-import { displayDate } from "@/lib/timezone";
+import { currentInstant, displayDate } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "卸载分析" };
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ const DAY_MS = 86_400_000;
 export default function EditPageUninstall() {
   // 注意：这一页的日轴是服务端瞬时刻（firstSeenAt / uninstalledAt）换算到 UTC+8 后的自然日，
   // 和事件页、分布页那套「UsageDaily.date 的 UTC 日历日」不是同一个东西，所以默认区间按 UTC+8 的今天算。
-  const now = Date.now();
+  const now = currentInstant();
   const end = displayDate(now);
   const start = displayDate(now - 6 * DAY_MS);
 

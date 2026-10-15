@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ListTree } from "lucide-react";
 import { EventExplorer } from "@/components/edit-page/event-explorer";
 import { buttonVariants } from "@/components/ui/button";
-import { displayDate } from "@/lib/timezone";
+import { currentInstant, displayDate } from "@/lib/timezone";
 
 export const metadata: Metadata = { title: "事件分析" };
 // 「今天」跟随当前时刻，不能把这个页面当成静态页在构建时把日期烤死
@@ -15,7 +15,7 @@ const DAY_MS = 86_400_000;
 export default function EditPageEvents() {
   // 「今天」按展示时区（UTC+8）算：按 UTC 算的话，北京时间 0:00–8:00 会判成昨天，
   // 日期选择器就把今天禁掉了（选不到今天）。数据轴仍是 UsageDaily.date 的 UTC 日历日。
-  const now = Date.now();
+  const now = currentInstant();
   const defaultEnd = displayDate(now);
   const defaultStart = displayDate(now - 6 * DAY_MS);
 
