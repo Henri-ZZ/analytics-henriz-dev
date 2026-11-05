@@ -124,6 +124,27 @@ export const EDIT_PAGE_EVENT_SECTIONS: EditPageEventSection[] = [
     ],
   },
   {
+    title: "水印",
+    note: "只记录「产物带上了水印」与「开关被切换成某状态」这两类事实，用户输入的自定义文字本身绝不上报。这三项都不计入使用强度：watermark.stamped 是截图产物的附带结果（截图本身已经计过一次），另外两项是控制面板里的设置开关，不代表使用了编辑能力。",
+    events: [
+      {
+        key: "watermark.stamped",
+        description:
+          "扩展产出的截图带上了水印（免费版）。每张产出图片计 1 次，无论水印是保存时画进像素，还是页面覆盖层本来就进了画面。Premium 产出的图片永远不计，水印绘制失败也不计。",
+      },
+      {
+        key: "watermark.hide",
+        description:
+          "Premium 用户在控制面板打开「隐藏水印」，产出从此不带水印。只计「切换到隐藏」这一次：把开关重复保存成同值、或再关掉隐藏都不计。",
+      },
+      {
+        key: "watermark.custom",
+        description:
+          "Premium 用户把水印切换成自定义文字。只计「切换到自定义」这一次，输入框里的具体文字永远不上报。",
+      },
+    ],
+  },
+  {
     title: "商业化",
     note: "激活失败必须携带一个原因子键（见下方「激活失败原因」），不允许记录原始错误信息或错误码。",
     events: [
